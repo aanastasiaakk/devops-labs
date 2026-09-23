@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="uk">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Task Manager</title>
+  <style>
+    body { font-family: system-ui, sans-serif; max-width: 560px; margin: 40px auto; padding: 0 16px; background: #f6f7f9; color: #222; }
+    h1 { font-size: 24px; }
+    form { display: flex; gap: 8px; margin-bottom: 16px; }
+    input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 6px; }
+    button { padding: 8px 12px; border: 0; border-radius: 6px; background: #2d6cdf; color: #fff; cursor: pointer; }
+    ul { list-style: none; padding: 0; }
+    li { display: flex; align-items: center; gap: 8px; background: #fff; padding: 10px; border-radius: 6px; margin-bottom: 6px; }
+    li.done span { text-decoration: line-through; color: #888; }
+    li span { flex: 1; }
+    li button { background: #d9534f; }
+    #stats { background: #fff; padding: 10px; border-radius: 6px; font-size: 14px; }
+  </style>
+</head>
+<body>
+  <h1>Task Manager</h1>
+  <form id="form">
+    <input id="title" placeholder="Нова задача" required>
+    <button>Додати</button>
+  </form>
+  <ul id="list"></ul>
+  <div id="stats">Завантаження статистики…</div>
+
+  <script>
+    // Запити йдуть на той самий хост; nginx перенаправляє /api/tasks і /api/stats на потрібні сервіси.
+    const TASKS = "/api/tasks";
+    const STATS = "/api/stats";
+
+    async function load() {
+      const tasks = await (await fetch(TASKS)).json();
+      const list = document.getElementById("list");
+      list.innerHTML = "";
+      for (const t of tasks) {
+        const li = document.createElement("li");
+        if (t.done) li.className = "done";
+        const cb = document.createElement("input");
+        cb.type = "checkbox"; cb.checked = t.done; cb.style.flex = "0";
+        cb.onchange = () => fetch(`${TASKS}/${t.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ done: cb.checked }) }).then(load);
+        const span = document.createElement("span"); span.textContent = t.title;
+        const del = document.createElement("button"); del.textContent = "✕";
+        del.onclick = () => fetch(`${TASKS}/${t.id}`, { method: "DELETE" }).then(load);
+        li.append(cb, span, del);
+        list.append(li);
+      }
+      loadStats();
+    }
+
+    async function loadStats() {
+      try {
+        const s = await (await fetch(STATS)).json();
+        document.getElementById("stats").textContent =
+          `Всього: ${s.total} · Виконано: ${s.done} · Відкрито: ${s.open} · ${s.percent_done}% ${s.cached ? "(з кешу Redis)" : ""}`;
+      } catch { document.getElementById("stats").textContent = "Статистика недоступна"; }
+    }
+
+    document.getElementById("form").onsubmit = async (e) => {
+      e.preventDefault();
+      const input = document.getElementById("title");
+      await fetch(TASKS, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ title: input.value }) });
+      input.value = "";
+      load();
+    };
+
+    load();
+  </script>
+</body>
+</html>

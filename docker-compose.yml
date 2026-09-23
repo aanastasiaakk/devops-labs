@@ -1,0 +1,61 @@
+services:
+  # База даних PostgreSQL
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-app}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
+      POSTGRES_DB: ${POSTGRES_DB:-tasks}
+    volumes:
+      - db_data:/var/lib/postgresql/data   # дані не зникнуть після перезапуску
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-tasks}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Кеш Redis
+  redis:
+    image: redis:7-alpine
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  # Мікросервіс 1: CRUD задач
+  tasks-service:
+    build: ./tasks-service
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-app}:${POSTGRES_PASSWORD:-app}@db:5432/${POSTGRES_DB:-tasks}
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "8000:8000"
+
+  # Мікросервіс 2: статистика (ходить у tasks-service, кешує в Redis)
+  stats-service:
+    build: ./stats-service
+    environment:
+      TASKS_URL: http://tasks-service:8000
+      REDIS_URL: redis://redis:6379/0
+    depends_on:
+      redis:
+        condition: service_healthy
+      tasks-service:
+        condition: service_started
+    ports:
+      - "8001:8001"
+
+  # Фронтенд (nginx віддає сторінку і проксує /api/* на сервіси)
+  frontend:
+    build: ./frontend
+    depends_on:
+      - tasks-service
+      - stats-service
+    ports:
+      - "8080:80"
+
+volumes:
+  db_data:

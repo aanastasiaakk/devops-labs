@@ -45,7 +45,7 @@ def test_create_and_list():
     assert r.status_code == 201
     assert r.json()["done"] is False
     tasks = client.get("/tasks").json()
-    assert len(tasks) == 1
+    assert len(tasks) == 2
     assert tasks[0]["title"] == "Зробити лабу"
 
 

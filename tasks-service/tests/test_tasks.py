@@ -1,6 +1,5 @@
 import os
 
-# Для тестів використовуємо окрему SQLite-базу в пам'яті замість PostgreSQL.
 os.environ["DATABASE_URL"] = "sqlite://"
 
 import pytest

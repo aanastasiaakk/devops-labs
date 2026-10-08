@@ -1,5 +1,7 @@
 # Лабораторна робота №1 — Віртуалізація та контейнеризація
 
+[![CI](https://github.com/aanastasiaakk/devops-labs/actions/workflows/ci.yml/badge.svg)](https://github.com/aanastasiaakk/devops-labs/actions/workflows/ci.yml)
+
 Простий **Task Manager** з мікросервісною архітектурою, повністю запакований у Docker.
 
 ## Архітектура
@@ -80,4 +82,53 @@ git commit -m "Lab 1: dockerized microservices app"
 git branch -M main
 git remote add origin https://github.com/<твій-логін>/lab1-devops.git
 git push -u origin main
+```
+
+---
+
+# Лабораторна робота №2 — Continuous Integration
+
+CI налаштовано в **GitHub Actions**: `.github/workflows/ci.yml`.
+
+## Коли запускається
+- кожна зміна в Pull Request у `main`;
+- push у `main` або `develop`;
+- вручну з вкладки **Actions** (`workflow_dispatch`).
+
+## Завдання (jobs)
+
+```
+Lint (tasks-service) ─┐
+Lint (stats-service) ─┤
+Lint (frontend) ──────┤
+Build & Test (tasks-service) ─┼──► Docker image (tasks-service)
+Build & Test (stats-service) ─┤    Docker image (stats-service)
+Build & Test (frontend) ──────┘    Docker image (frontend)
+```
+
+| Job | Кроки |
+|---|---|
+| Lint | Ruff (`ruff check` + `ruff format --check`) для Python, HTMLHint для фронтенду |
+| Build & Test (Python) | встановлення залежностей з кешем pip → `compileall` → `pytest` |
+| Build & Test (frontend) | перевірка конфігу `nginx -t` → запуск nginx і перевірка, що сторінка віддається |
+| Docker image | збирання образу з Dockerfile → сканування Trivy (HIGH/CRITICAL) → публікація в GHCR (тільки push) |
+
+- Однотипні сервіси об'єднано через `matrix`, `fail-fast: false` — падіння одного не скасовує інші.
+- Lint і тести — блокуючі: будь-яка помилка робить статус PR червоним.
+- Образи: `ghcr.io/aanastasiaakk/devops-labs/<service>`, теги `sha-<commit>` і `latest` (тільки для `main`).
+- Авторизація в реєстрі — через вбудований секрет `GITHUB_TOKEN`, паролів у репозиторії немає.
+
+## Перевірка опублікованого образу
+
+```bash
+docker pull ghcr.io/aanastasiaakk/devops-labs/stats-service:latest
+docker run --rm -p 8001:8001 ghcr.io/aanastasiaakk/devops-labs/stats-service:latest
+# http://localhost:8001/health -> {"status":"ok"}
+```
+
+## Лінтер локально
+
+```bash
+pip install ruff==0.8.4
+cd tasks-service && ruff check . && ruff format --check .
 ```

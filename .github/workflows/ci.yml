@@ -1,0 +1,195 @@
+# CI-пайплайн проєкту (лабораторна №2 "Continuous Integration")
+#
+# Порядок роботи:
+#   lint ─────────────┐
+#   build-test ───────┼──► docker (збирання образів + сканування Trivy + публікація в GHCR)
+#   build-test-frontend┘
+# Перші три групи завдань ідуть паралельно, docker стартує лише після їх успіху.
+
+name: CI
+
+on:
+  push:
+    branches: [main, develop]      # push у робочі гілки
+  pull_request:
+    branches: [main]               # кожна зміна в PR до main
+  workflow_dispatch:               # ручний запуск з вкладки Actions
+
+# Якщо в PR запушили новий коміт - попередній запуск для цього PR скасовується
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# За замовчуванням токен має лише права на читання (принцип найменших привілеїв)
+permissions:
+  contents: read
+
+env:
+  PYTHON_VERSION: "3.12"
+  RUFF_VERSION: "0.8.4"
+  HTMLHINT_VERSION: "1.9.2"
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # 1. Статичний аналіз коду (блокуючий: будь-яке порушення = червоний статус)
+  # ---------------------------------------------------------------------------
+  lint:
+    name: Lint (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false             # падіння одного сервісу не скасовує інші
+      matrix:
+        service: [tasks-service, stats-service, frontend]
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python
+        if: matrix.service != 'frontend'
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Ruff - lint
+        if: matrix.service != 'frontend'
+        run: |
+          pip install ruff==${{ env.RUFF_VERSION }}
+          # --output-format=github показує помилки прямо в коді в PR (annotations)
+          ruff check --output-format=github .
+
+      - name: Ruff - format check
+        if: matrix.service != 'frontend'
+        run: ruff format --check --diff .
+
+      - name: HTMLHint - lint
+        if: matrix.service == 'frontend'
+        run: npx --yes htmlhint@${{ env.HTMLHINT_VERSION }} index.html
+
+  # ---------------------------------------------------------------------------
+  # 2. Збірка і тести Python-сервісів (однотипні сервіси - через matrix)
+  # ---------------------------------------------------------------------------
+  build-test:
+    name: Build & Test (${{ matrix.service }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [tasks-service, stats-service]
+    defaults:
+      run:
+        working-directory: ${{ matrix.service }}
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Set up Python (with pip cache)
+        uses: actions/setup-python@v7
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          cache: pip                                         # кешування залежностей
+          cache-dependency-path: ${{ matrix.service }}/requirements.txt
+
+      - name: Build - install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Build - compile sources
+        run: python -m compileall -q app
+
+      - name: Test
+        run: pytest -v
+
+  # ---------------------------------------------------------------------------
+  # 2b. Збірка і тест фронтенду (nginx + статична сторінка)
+  # ---------------------------------------------------------------------------
+  build-test-frontend:
+    name: Build & Test (frontend)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - name: Build - validate nginx config
+        # --add-host потрібен, бо nginx при старті перевіряє, що імена сервісів з proxy_pass існують
+        run: |
+          docker run --rm \
+            --add-host tasks-service:127.0.0.1 --add-host stats-service:127.0.0.1 \
+            -v "$PWD/frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
+            nginx:alpine nginx -t
+
+      - name: Test - page is served
+        run: |
+          docker run -d --name frontend -p 8080:80 \
+            --add-host tasks-service:127.0.0.1 --add-host stats-service:127.0.0.1 \
+            -v "$PWD/frontend/nginx.conf:/etc/nginx/conf.d/default.conf:ro" \
+            -v "$PWD/frontend/index.html:/usr/share/nginx/html/index.html:ro" \
+            nginx:alpine
+          for i in $(seq 1 10); do curl -fs http://localhost:8080/ >/dev/null && break; sleep 1; done
+          curl -fsS http://localhost:8080/ | grep -q "<title>Task Manager</title>"
+          echo "Frontend serves index.html correctly"
+
+  # ---------------------------------------------------------------------------
+  # 3. Збирання образів, сканування на вразливості та публікація в GHCR
+  # ---------------------------------------------------------------------------
+  docker:
+    name: Docker image (${{ matrix.service }})
+    needs: [lint, build-test, build-test-frontend]   # лише після успіху всіх перевірок
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write              # право публікувати образи в GitHub Container Registry
+    strategy:
+      fail-fast: false
+      matrix:
+        service: [tasks-service, stats-service, frontend]
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: docker/setup-buildx-action@v4
+
+      - name: Image tags
+        id: meta
+        uses: docker/metadata-action@v6
+        with:
+          images: ghcr.io/${{ github.repository }}/${{ matrix.service }}
+          tags: |
+            type=sha,prefix=sha-
+            type=raw,value=latest,enable={{is_default_branch}}
+
+      - name: Build image (local, no push)
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.service }}
+          load: true               # образ лишається на раннері
+          push: false
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+      - name: Scan image for vulnerabilities (Trivy)
+        # Версія закріплена за commit SHA (v0.35.0) - безпечна після інциденту з trivy-action у березні 2026
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        with:
+          image-ref: ${{ fromJSON(steps.meta.outputs.json).tags[0] }}
+          severity: CRITICAL,HIGH
+          ignore-unfixed: true     # ігнорувати вразливості, для яких ще немає виправлення
+          exit-code: "1"           # знайдено вразливість -> крок падає (блокуючий)
+          format: table
+
+      - name: Log in to GHCR
+        if: github.event_name == 'push'          # для PR образи не публікуються
+        uses: docker/login-action@v4
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}   # секрет CI, у репозиторії паролів немає
+
+      - name: Push image
+        if: github.event_name == 'push'
+        uses: docker/build-push-action@v7
+        with:
+          context: ${{ matrix.service }}
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}

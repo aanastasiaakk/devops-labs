@@ -1,5 +1,7 @@
 """Tasks service: CRUD API для задач, дані зберігаються в PostgreSQL."""
+
 import time
+from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,11 +12,7 @@ from sqlalchemy.orm import Session
 from . import models
 from .database import Base, engine, get_db
 
-app = FastAPI(title="Tasks service")
-app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
-
-@app.on_event("startup")
 def create_tables():
     # База в контейнері може стартувати трохи довше, тому пробуємо кілька разів.
     for attempt in range(10):
@@ -25,6 +23,17 @@ def create_tables():
             print(f"DB not ready, retry {attempt + 1}/10")
             time.sleep(2)
     raise RuntimeError("Could not connect to the database")
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Код до yield виконується при старті застосунку, після yield - при зупинці.
+    create_tables()
+    yield
+
+
+app = FastAPI(title="Tasks service", lifespan=lifespan)
+app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
 
 class TaskCreate(BaseModel):

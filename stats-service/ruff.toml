@@ -1,0 +1,15 @@
+# Налаштування лінтера Ruff для цього сервісу
+line-length = 120
+target-version = "py312"
+
+[lint]
+# E/W - стиль PEP 8, F - помилки (невикористані імпорти, змінні),
+# I - порядок імпортів, B - типові баги (bugbear), UP - сучасний синтаксис Python
+select = ["E", "W", "F", "I", "B", "UP"]
+
+[lint.flake8-bugbear]
+# Depends() у параметрах - стандартний підхід FastAPI, це не помилка
+extend-immutable-calls = ["fastapi.Depends"]
+
+[lint.isort]
+known-first-party = ["app"]

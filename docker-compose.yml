@@ -1,5 +1,4 @@
 services:
-  # База даних PostgreSQL
   db:
     image: postgres:16-alpine
     environment:
@@ -7,14 +6,13 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-app}
       POSTGRES_DB: ${POSTGRES_DB:-tasks}
     volumes:
-      - db_data:/var/lib/postgresql/data   # дані не зникнуть після перезапуску
+      - db_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-app} -d ${POSTGRES_DB:-tasks}"]
       interval: 5s
       timeout: 3s
       retries: 10
 
-  # Кеш Redis
   redis:
     image: redis:7-alpine
     healthcheck:
@@ -23,7 +21,6 @@ services:
       timeout: 3s
       retries: 10
 
-  # Мікросервіс 1: CRUD задач
   tasks-service:
     build: ./tasks-service
     environment:
@@ -34,7 +31,6 @@ services:
     ports:
       - "8000:8000"
 
-  # Мікросервіс 2: статистика (ходить у tasks-service, кешує в Redis)
   stats-service:
     build: ./stats-service
     environment:
@@ -48,7 +44,6 @@ services:
     ports:
       - "8001:8001"
 
-  # Фронтенд (nginx віддає сторінку і проксує /api/* на сервіси)
   frontend:
     build: ./frontend
     depends_on:

@@ -3,6 +3,7 @@
 Бере список задач із tasks-service по HTTP і кешує результат у Redis на кілька секунд.
 Це приклад взаємодії двох мікросервісів та інфраструктурного елемента (кешу).
 """
+
 import json
 import os
 
@@ -39,7 +40,7 @@ def fetch_tasks() -> list[dict]:
         r.raise_for_status()
         return r.json()
     except httpx.HTTPError as e:
-        raise HTTPException(status_code=502, detail=f"tasks-service unavailable: {e}")
+        raise HTTPException(status_code=502, detail=f"tasks-service unavailable: {e}") from e
 
 
 @app.get("/health")

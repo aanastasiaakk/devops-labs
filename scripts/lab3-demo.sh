@@ -23,6 +23,8 @@ version_probe() { curl -s "$URL/api/version"; echo; }
   fi
   run minikube addons enable metrics-server
   run minikube addons enable ingress
+  # Ingress можна створити лише коли контролер (і його admission-вебхук) уже працює
+  run kubectl -n ingress-nginx wait --for=condition=ready pod -l app.kubernetes.io/component=controller --timeout=180s
   run kubectl get nodes -o wide
   run kubectl get pods -n kube-system
 } 2>&1 | tee "$OUT/02-cluster.txt"

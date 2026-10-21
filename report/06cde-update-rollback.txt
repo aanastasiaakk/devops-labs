@@ -25,34 +25,34 @@ Waiting for deployment "tasks-service" rollout to finish: 1 old replicas are pen
 deployment "tasks-service" successfully rolled out
 
 $ kubectl -n task-manager get pods -l app=tasks-service
-NAME                             READY   STATUS        RESTARTS   AGE
-tasks-service-579d6d4b7b-46bc7   1/1     Running       0          10s
-tasks-service-579d6d4b7b-jgpvm   1/1     Running       0          31s
-tasks-service-579d6d4b7b-nscw6   1/1     Running       0          17s
-tasks-service-579d6d4b7b-w7m55   1/1     Running       0          24s
-tasks-service-864cdf84b5-q24dj   1/1     Terminating   0          59s
-tasks-service-864cdf84b5-w7h6k   1/1     Terminating   0          75s
+NAME                             READY   STATUS        RESTARTS       AGE
+tasks-service-579d6d4b7b-7m4st   1/1     Running       0              86s
+tasks-service-579d6d4b7b-cx7nn   1/1     Running       0              25s
+tasks-service-579d6d4b7b-kblcm   1/1     Running       0              10s
+tasks-service-579d6d4b7b-wxq6h   1/1     Running       0              18s
+tasks-service-864cdf84b5-lm4ws   1/1     Terminating   1 (2m6s ago)   2m15s
+tasks-service-864cdf84b5-v4242   1/1     Terminating   0              103s
 
 $ kubectl -n task-manager get replicasets -l app=tasks-service
 NAME                       DESIRED   CURRENT   READY   AGE
-tasks-service-579d6d4b7b   4         4         4       31s
-tasks-service-864cdf84b5   0         0         0       75s
+tasks-service-579d6d4b7b   4         4         4       86s
+tasks-service-864cdf84b5   0         0         0       2m15s
 
-Запитів під час оновлення: 100
-Успішних (HTTP 200): 100
+Запитів під час оновлення: 264
+Успішних (HTTP 200): 264
 Невдалих: 0
 Версії у відповідях:
-  56 1.0.0
-  44 1.1.0
+ 222 1.0.0
+  42 1.1.0
 
 Перехід версій (перші і останні рядки журналу):
-21:42:36 {"status":"ok","service":"tasks-service","version":"1.0.0","pod":"tasks-service-864cdf84b5-w7h6k"} HTTP=200
-21:42:37 {"status":"ok","service":"tasks-service","version":"1.0.0","pod":"tasks-service-864cdf84b5-4jvcq"} HTTP=200
-21:42:37 {"status":"ok","service":"tasks-service","version":"1.0.0","pod":"tasks-service-864cdf84b5-4jvcq"} HTTP=200
+22:10:34 {"status":"ok","service":"tasks-service","version":"1.0.0","pod":"tasks-service-864cdf84b5-v4242"} HTTP=200
+22:10:34 {"status":"ok","service":"tasks-service","version":"1.0.0","pod":"tasks-service-864cdf84b5-v4242"} HTTP=200
+22:10:34 {"status":"ok","service":"tasks-service","version":"1.0.0","pod":"tasks-service-864cdf84b5-lm4ws"} HTTP=200
 ...
-21:43:08 {"status":"ok","service":"tasks-service","version":"1.1.0","pod":"tasks-service-579d6d4b7b-nscw6"} HTTP=200
-21:43:09 {"status":"ok","service":"tasks-service","version":"1.1.0","pod":"tasks-service-579d6d4b7b-46bc7"} HTTP=200
-21:43:09 {"status":"ok","service":"tasks-service","version":"1.1.0","pod":"tasks-service-579d6d4b7b-nscw6"} HTTP=200
+22:12:01 {"status":"ok","service":"tasks-service","version":"1.1.0","pod":"tasks-service-579d6d4b7b-wxq6h"} HTTP=200
+22:12:01 {"status":"ok","service":"tasks-service","version":"1.1.0","pod":"tasks-service-579d6d4b7b-wxq6h"} HTTP=200
+22:12:01 {"status":"ok","service":"tasks-service","version":"1.1.0","pod":"tasks-service-579d6d4b7b-wxq6h"} HTTP=200
 
 
 ========== 6d. Історія оновлень і відкат ==========
@@ -96,4 +96,4 @@ REVISION  CHANGE-CAUSE
 3         rollback to 1.0.0
 
 
-Версія після відкату: {"status":"ok","service":"tasks-service","version":"1.1.0","pod":"tasks-service-579d6d4b7b-jgpvm"}
+Версія після відкату: {"status":"ok","service":"tasks-service","version":"1.0.0","pod":"tasks-service-864cdf84b5-xz9j5"}

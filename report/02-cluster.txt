@@ -12,24 +12,27 @@ $ minikube addons enable ingress
 * ingress is an addon maintained by Kubernetes. For any concerns contact minikube on GitHub.
 You can view the list of minikube maintainers at: https://github.com/kubernetes/minikube/blob/master/OWNERS
 * After the addon is enabled, please run "minikube tunnel" and your ingress resources would be available at "127.0.0.1"
+  - Using image registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.9
+  - Using image registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.9
   - Using image registry.k8s.io/ingress-nginx/controller:v1.15.1
-  - Using image registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.9
-  - Using image registry.k8s.io/ingress-nginx/kube-webhook-certgen:v1.6.9
 * Verifying ingress addon...
 * The 'ingress' addon is enabled
 
+$ kubectl -n ingress-nginx wait --for=condition=ready pod -l app.kubernetes.io/component=controller --timeout=180s
+pod/ingress-nginx-controller-d7cd8c989-7q4vb condition met
+
 $ kubectl get nodes -o wide
 NAME       STATUS   ROLES           AGE   VERSION   INTERNAL-IP    EXTERNAL-IP   OS-IMAGE                         KERNEL-VERSION            CONTAINER-RUNTIME
-minikube   Ready    control-plane   19m   v1.37.0   192.168.49.2   <none>        Debian GNU/Linux 12 (bookworm)   7.0.12-linuxkit (arm64)   containerd://2.3.4
+minikube   Ready    control-plane   11m   v1.37.0   192.168.49.2   <none>        Debian GNU/Linux 12 (bookworm)   7.0.12-linuxkit (arm64)   containerd://2.3.4
 
 $ kubectl get pods -n kube-system
 NAME                               READY   STATUS    RESTARTS   AGE
-coredns-559f6c778d-6zzmn           1/1     Running   0          19m
-etcd-minikube                      1/1     Running   0          19m
-kindnet-z4tl7                      1/1     Running   0          19m
-kube-apiserver-minikube            1/1     Running   0          19m
-kube-controller-manager-minikube   1/1     Running   0          19m
-kube-proxy-g47h7                   1/1     Running   0          19m
-kube-scheduler-minikube            1/1     Running   0          19m
-metrics-server-768f9f6999-4nm7b    1/1     Running   0          19m
-storage-provisioner                1/1     Running   0          19m
+coredns-559f6c778d-2jbp4           1/1     Running   0          11m
+etcd-minikube                      1/1     Running   0          11m
+kindnet-ldlwh                      1/1     Running   0          11m
+kube-apiserver-minikube            1/1     Running   0          11m
+kube-controller-manager-minikube   1/1     Running   0          11m
+kube-proxy-lwflv                   1/1     Running   0          11m
+kube-scheduler-minikube            1/1     Running   0          11m
+metrics-server-768f9f6999-5zddg    1/1     Running   0          10m
+storage-provisioner                1/1     Running   0          11m

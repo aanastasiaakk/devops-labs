@@ -198,6 +198,7 @@ init-контейнер `wait-for-postgres` у tasks-service чекає гото
 minikube start --driver=docker --cpus=2 --memory=4096
 minikube addons enable metrics-server
 minikube addons enable ingress
+kubectl -n ingress-nginx wait --for=condition=ready pod -l app.kubernetes.io/component=controller --timeout=180s
 
 # 2. Образи завантажуються з GHCR автоматично під час розгортання.
 #    Запасний варіант без інтернету - зібрати локально:  LOCAL_IMAGES=1 ./scripts/lab3-demo.sh

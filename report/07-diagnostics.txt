@@ -9,36 +9,36 @@ deployment.apps/tasks-service image updated
 
 $ kubectl -n task-manager get pods -l app=tasks-service
 NAME                             READY   STATUS             RESTARTS   AGE
-tasks-service-765f4f7997-pf4dg   0/1     ImagePullBackOff   0          40s
-tasks-service-864cdf84b5-cggql   1/1     Running            0          54s
-tasks-service-864cdf84b5-qtl2t   1/1     Running            0          47s
-tasks-service-864cdf84b5-rjwb7   1/1     Running            0          68s
-tasks-service-864cdf84b5-rqft2   1/1     Running            0          61s
+tasks-service-765f4f7997-xqj75   0/1     ImagePullBackOff   0          43s
+tasks-service-864cdf84b5-65lg9   1/1     Running            0          71s
+tasks-service-864cdf84b5-8lgxz   1/1     Running            0          64s
+tasks-service-864cdf84b5-xhl9w   1/1     Running            0          57s
+tasks-service-864cdf84b5-xz9j5   1/1     Running            0          50s
 
-Под з помилкою: tasks-service-765f4f7997-pf4dg
-Старі поди продовжують обслуговувати запити (maxUnavailable: 0): {"status":"ok","service":"tasks-service","version":"1.0.0","pod":"tasks-service-864cdf84b5-qtl2t"}
+Под з помилкою: tasks-service-765f4f7997-xqj75
+Старі поди продовжують обслуговувати запити (maxUnavailable: 0): {"status":"ok","service":"tasks-service","version":"1.0.0","pod":"tasks-service-864cdf84b5-xz9j5"}
 
 
 ========== 7b. Причина: опис пода і події ==========
 
-$ kubectl -n task-manager describe pod tasks-service-765f4f7997-pf4dg
-Name:             tasks-service-765f4f7997-pf4dg
+$ kubectl -n task-manager describe pod tasks-service-765f4f7997-xqj75
+Name:             tasks-service-765f4f7997-xqj75
 Namespace:        task-manager
 Priority:         0
 Service Account:  default
 Node:             minikube/192.168.49.2
-Start Time:       Wed, 21 Oct 2026 21:43:37 +0300
+Start Time:       Wed, 21 Oct 2026 22:12:30 +0300
 Labels:           app=tasks-service
                   pod-template-hash=765f4f7997
 Annotations:      <none>
 Status:           Pending
-IP:               10.244.0.82
+IP:               10.244.0.34
 IPs:
-  IP:           10.244.0.82
+  IP:           10.244.0.34
 Controlled By:  ReplicaSet/tasks-service-765f4f7997
 Init Containers:
   wait-for-postgres:
-    Container ID:  containerd://709738d8fe31103609b66815f6c29bc7e9f77a5e701610ef93303aa039a944af
+    Container ID:  containerd://40b77816e3245cd0cc1cb7cf674808e58fbbd56810784a40aefbdb4b8708e14a
     Image:         postgres:16-alpine
     Image ID:      docker.io/library/postgres@sha256:721873c34ceb9f8d8fc265984940dc982404c105f19ad51be9fdc5970a6080ea
     Port:          <none>
@@ -50,8 +50,8 @@ Init Containers:
     State:          Terminated
       Reason:       Completed
       Exit Code:    0
-      Started:      Wed, 21 Oct 2026 21:43:38 +0300
-      Finished:     Wed, 21 Oct 2026 21:43:38 +0300
+      Started:      Wed, 21 Oct 2026 22:12:30 +0300
+      Finished:     Wed, 21 Oct 2026 22:12:30 +0300
     Ready:          True
     Restart Count:  0
     Limits:
@@ -62,7 +62,7 @@ Init Containers:
       memory:     16Mi
     Environment:  <none>
     Mounts:
-      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-cxjvn (ro)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-fdbhk (ro)
 Containers:
   tasks-service:
     Container ID:   
@@ -85,7 +85,7 @@ Containers:
     Environment:
       DATABASE_URL:  <set to the key 'DATABASE_URL' in secret 'app-secret'>  Optional: false
     Mounts:
-      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-cxjvn (ro)
+      /var/run/secrets/kubernetes.io/serviceaccount from kube-api-access-fdbhk (ro)
 Conditions:
   Type                        Status
   PodReadyToStartContainers   True 
@@ -94,7 +94,7 @@ Conditions:
   ContainersReady             False 
   PodScheduled                True 
 Volumes:
-  kube-api-access-cxjvn:
+  kube-api-access-fdbhk:
     Type:                    Projected (a volume that contains injected data from multiple sources)
     TokenExpirationSeconds:  3607
     ConfigMapName:           kube-root-ca.crt
@@ -107,53 +107,53 @@ Tolerations:                 node.kubernetes.io/not-ready:NoExecute op=Exists fo
 Events:
   Type     Reason     Age               From               Message
   ----     ------     ----              ----               -------
-  Normal   Scheduled  40s               default-scheduler  Successfully assigned task-manager/tasks-service-765f4f7997-pf4dg to minikube
-  Normal   Pulled     39s               kubelet            spec.initContainers{wait-for-postgres}: Container image "postgres:16-alpine" already present on machine and can be accessed by the pod
-  Normal   Created    39s               kubelet            spec.initContainers{wait-for-postgres}: Container created
-  Normal   Started    39s               kubelet            spec.initContainers{wait-for-postgres}: Container started
-  Normal   BackOff    13s               kubelet            spec.containers{tasks-service}: Back-off pulling image "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9"
-  Warning  Failed     13s               kubelet            spec.containers{tasks-service}: Error: ImagePullBackOff
-  Normal   Pulling    1s (x3 over 39s)  kubelet            spec.containers{tasks-service}: Pulling image "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9"
-  Warning  Failed     1s (x3 over 38s)  kubelet            spec.containers{tasks-service}: Failed to pull image "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9": rpc error: code = NotFound desc = failed to pull and unpack image "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9": failed to resolve reference "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9": ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9: not found
-  Warning  Failed     1s (x3 over 38s)  kubelet            spec.containers{tasks-service}: Error: ErrImagePull
+  Normal   Scheduled  43s               default-scheduler  Successfully assigned task-manager/tasks-service-765f4f7997-xqj75 to minikube
+  Normal   Pulled     43s               kubelet            spec.initContainers{wait-for-postgres}: Container image "postgres:16-alpine" already present on machine and can be accessed by the pod
+  Normal   Created    43s               kubelet            spec.initContainers{wait-for-postgres}: Container created
+  Normal   Started    43s               kubelet            spec.initContainers{wait-for-postgres}: Container started
+  Normal   BackOff    15s               kubelet            spec.containers{tasks-service}: Back-off pulling image "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9"
+  Warning  Failed     15s               kubelet            spec.containers{tasks-service}: Error: ImagePullBackOff
+  Normal   Pulling    2s (x3 over 42s)  kubelet            spec.containers{tasks-service}: Pulling image "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9"
+  Warning  Failed     1s (x3 over 42s)  kubelet            spec.containers{tasks-service}: Failed to pull image "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9": rpc error: code = NotFound desc = failed to pull and unpack image "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9": failed to resolve reference "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9": ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9: not found
+  Warning  Failed     1s (x3 over 42s)  kubelet            spec.containers{tasks-service}: Error: ErrImagePull
 
-$ kubectl -n task-manager get events --field-selector involvedObject.name=tasks-service-765f4f7997-pf4dg --sort-by=.lastTimestamp
+$ kubectl -n task-manager get events --field-selector involvedObject.name=tasks-service-765f4f7997-xqj75 --sort-by=.lastTimestamp
 LAST SEEN   TYPE      REASON      OBJECT                               MESSAGE
-40s         Normal    Scheduled   pod/tasks-service-765f4f7997-pf4dg   Successfully assigned task-manager/tasks-service-765f4f7997-pf4dg to minikube
-39s         Normal    Pulled      pod/tasks-service-765f4f7997-pf4dg   Container image "postgres:16-alpine" already present on machine and can be accessed by the pod
-39s         Normal    Created     pod/tasks-service-765f4f7997-pf4dg   Container created
-39s         Normal    Started     pod/tasks-service-765f4f7997-pf4dg   Container started
-13s         Normal    BackOff     pod/tasks-service-765f4f7997-pf4dg   Back-off pulling image "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9"
-13s         Warning   Failed      pod/tasks-service-765f4f7997-pf4dg   Error: ImagePullBackOff
-1s          Normal    Pulling     pod/tasks-service-765f4f7997-pf4dg   Pulling image "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9"
-1s          Warning   Failed      pod/tasks-service-765f4f7997-pf4dg   Failed to pull image "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9": rpc error: code = NotFound desc = failed to pull and unpack image "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9": failed to resolve reference "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9": ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9: not found
-1s          Warning   Failed      pod/tasks-service-765f4f7997-pf4dg   Error: ErrImagePull
+43s         Normal    Scheduled   pod/tasks-service-765f4f7997-xqj75   Successfully assigned task-manager/tasks-service-765f4f7997-xqj75 to minikube
+43s         Normal    Pulled      pod/tasks-service-765f4f7997-xqj75   Container image "postgres:16-alpine" already present on machine and can be accessed by the pod
+43s         Normal    Created     pod/tasks-service-765f4f7997-xqj75   Container created
+43s         Normal    Started     pod/tasks-service-765f4f7997-xqj75   Container started
+15s         Normal    BackOff     pod/tasks-service-765f4f7997-xqj75   Back-off pulling image "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9"
+15s         Warning   Failed      pod/tasks-service-765f4f7997-xqj75   Error: ImagePullBackOff
+2s          Normal    Pulling     pod/tasks-service-765f4f7997-xqj75   Pulling image "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9"
+1s          Warning   Failed      pod/tasks-service-765f4f7997-xqj75   Failed to pull image "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9": rpc error: code = NotFound desc = failed to pull and unpack image "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9": failed to resolve reference "ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9": ghcr.io/aanastasiaakk/devops-labs/tasks-service:9.9.9: not found
+1s          Warning   Failed      pod/tasks-service-765f4f7997-xqj75   Error: ErrImagePull
 
 
 ========== 7c. Логи контейнера і команди всередині контейнера ==========
 
 $ kubectl -n task-manager logs deploy/tasks-service --tail=15
-Found 5 pods, using pod/tasks-service-864cdf84b5-rjwb7
+Found 5 pods, using pod/tasks-service-864cdf84b5-65lg9
 Defaulted container "tasks-service" out of: tasks-service, wait-for-postgres (init)
-INFO:     10.244.0.1:44214 - "GET /ready HTTP/1.1" 200 OK
-INFO:     10.244.0.1:41952 - "GET /ready HTTP/1.1" 200 OK
-INFO:     10.244.0.1:41968 - "GET /ready HTTP/1.1" 200 OK
-INFO:     10.244.0.1:41976 - "GET /health HTTP/1.1" 200 OK
-INFO:     10.244.0.1:42912 - "GET /ready HTTP/1.1" 200 OK
-INFO:     10.244.0.1:42928 - "GET /ready HTTP/1.1" 200 OK
-INFO:     10.244.0.1:42936 - "GET /health HTTP/1.1" 200 OK
-INFO:     10.244.0.1:53642 - "GET /ready HTTP/1.1" 200 OK
-INFO:     10.244.0.1:53656 - "GET /ready HTTP/1.1" 200 OK
-INFO:     10.244.0.1:53666 - "GET /health HTTP/1.1" 200 OK
-INFO:     10.244.0.1:43018 - "GET /ready HTTP/1.1" 200 OK
-INFO:     10.244.0.1:43024 - "GET /ready HTTP/1.1" 200 OK
-INFO:     10.244.0.1:43036 - "GET /health HTTP/1.1" 200 OK
-INFO:     10.244.0.1:44574 - "GET /ready HTTP/1.1" 200 OK
-INFO:     10.244.0.1:44580 - "GET /ready HTTP/1.1" 200 OK
+INFO:     10.244.0.1:41500 - "GET /ready HTTP/1.1" 200 OK
+INFO:     10.244.0.1:41444 - "GET /ready HTTP/1.1" 200 OK
+INFO:     10.244.0.1:41458 - "GET /ready HTTP/1.1" 200 OK
+INFO:     10.244.0.1:59716 - "GET /ready HTTP/1.1" 200 OK
+INFO:     10.244.0.1:59724 - "GET /ready HTTP/1.1" 200 OK
+INFO:     10.244.0.1:39798 - "GET /health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:39812 - "GET /ready HTTP/1.1" 200 OK
+INFO:     10.244.0.1:39818 - "GET /ready HTTP/1.1" 200 OK
+INFO:     10.244.0.1:44754 - "GET /health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:44758 - "GET /ready HTTP/1.1" 200 OK
+INFO:     10.244.0.1:44772 - "GET /ready HTTP/1.1" 200 OK
+INFO:     10.244.0.1:38236 - "GET /health HTTP/1.1" 200 OK
+INFO:     10.244.0.1:38238 - "GET /ready HTTP/1.1" 200 OK
+INFO:     10.244.0.1:38248 - "GET /ready HTTP/1.1" 200 OK
+INFO:     10.244.0.1:54568 - "GET /health HTTP/1.1" 200 OK
 
 $ kubectl -n task-manager exec deploy/tasks-service -- sh -c echo "hostname: $(hostname)"; echo "APP_VERSION=$APP_VERSION"; ls /app; python --version
 Defaulted container "tasks-service" out of: tasks-service, wait-for-postgres (init)
-hostname: tasks-service-864cdf84b5-rjwb7
+hostname: tasks-service-864cdf84b5-65lg9
 APP_VERSION=1.0.0
 app
 pytest.ini
@@ -173,7 +173,6 @@ $ kubectl -n task-manager annotate deployment/tasks-service kubernetes.io/change
 deployment.apps/tasks-service annotated
 
 $ kubectl -n task-manager rollout status deployment/tasks-service --timeout=180s
-Waiting for deployment spec update to be observed...
 Waiting for deployment "tasks-service" rollout to finish: 1 out of 4 new replicas have been updated...
 Waiting for deployment "tasks-service" rollout to finish: 1 out of 4 new replicas have been updated...
 Waiting for deployment "tasks-service" rollout to finish: 1 out of 4 new replicas have been updated...
@@ -192,14 +191,14 @@ deployment "tasks-service" successfully rolled out
 
 $ kubectl -n task-manager get pods -l app=tasks-service
 NAME                             READY   STATUS        RESTARTS   AGE
-tasks-service-579d6d4b7b-j8sl6   1/1     Running       0          21s
-tasks-service-579d6d4b7b-rblrv   1/1     Running       0          14s
-tasks-service-579d6d4b7b-rs5d6   1/1     Running       0          7s
-tasks-service-579d6d4b7b-wm2bw   1/1     Running       0          27s
-tasks-service-864cdf84b5-rjwb7   1/1     Terminating   0          96s
-tasks-service-864cdf84b5-rqft2   1/1     Terminating   0          89s
+tasks-service-579d6d4b7b-8znlt   1/1     Running       0          21s
+tasks-service-579d6d4b7b-qw5l5   1/1     Running       0          29s
+tasks-service-579d6d4b7b-vp66j   1/1     Running       0          7s
+tasks-service-579d6d4b7b-vv4g2   1/1     Running       0          14s
+tasks-service-864cdf84b5-65lg9   1/1     Terminating   0          100s
+tasks-service-864cdf84b5-xz9j5   1/1     Terminating   0          79s
 
-Версія: {"status":"ok","service":"tasks-service","version":"1.1.0","pod":"tasks-service-579d6d4b7b-wm2bw"}
+Версія: {"status":"ok","service":"tasks-service","version":"1.1.0","pod":"tasks-service-579d6d4b7b-qw5l5"}
 
 
 ========== Підсумок ==========
@@ -212,46 +211,48 @@ deployment "tasks-service" successfully rolled out
 
 $ kubectl -n task-manager get pods,deployments,services,ingress,pvc
 NAME                                 READY   STATUS        RESTARTS   AGE
-pod/frontend-6bf58d6b78-pw6q6        1/1     Running       0          2m52s
-pod/frontend-6bf58d6b78-xtl99        1/1     Running       0          2m52s
-pod/postgres-658b776795-npfw5        1/1     Running       0          2m53s
-pod/redis-5d86499dd5-vl686           1/1     Running       0          2m52s
-pod/stats-service-7fd6b744b-jsg2v    1/1     Running       0          2m52s
-pod/stats-service-7fd6b744b-rlvlk    1/1     Running       0          2m52s
-pod/tasks-service-579d6d4b7b-j8sl6   1/1     Running       0          22s
-pod/tasks-service-579d6d4b7b-rblrv   1/1     Terminating   0          15s
-pod/tasks-service-579d6d4b7b-rs5d6   1/1     Terminating   0          8s
-pod/tasks-service-579d6d4b7b-wm2bw   1/1     Running       0          28s
-pod/tasks-service-864cdf84b5-rjwb7   1/1     Terminating   0          97s
-pod/tasks-service-864cdf84b5-rqft2   1/1     Terminating   0          90s
+pod/frontend-6bf58d6b78-pkmnl        1/1     Running       0          3m54s
+pod/frontend-6bf58d6b78-wgksw        1/1     Running       0          3m54s
+pod/postgres-658b776795-tpjpv        1/1     Running       0          3m55s
+pod/redis-5d86499dd5-trj9t           1/1     Running       0          3m55s
+pod/stats-service-7fd6b744b-d5rtr    1/1     Running       0          3m55s
+pod/stats-service-7fd6b744b-zjj4g    1/1     Running       0          3m55s
+pod/tasks-service-579d6d4b7b-8znlt   1/1     Running       0          21s
+pod/tasks-service-579d6d4b7b-qw5l5   1/1     Running       0          29s
+pod/tasks-service-579d6d4b7b-vp66j   1/1     Terminating   0          7s
+pod/tasks-service-579d6d4b7b-vv4g2   1/1     Terminating   0          14s
+pod/tasks-service-864cdf84b5-65lg9   1/1     Terminating   0          100s
+pod/tasks-service-864cdf84b5-xz9j5   1/1     Terminating   0          79s
 
 NAME                            READY   UP-TO-DATE   AVAILABLE   AGE
-deployment.apps/frontend        2/2     2            2           2m52s
-deployment.apps/postgres        1/1     1            1           2m53s
-deployment.apps/redis           1/1     1            1           2m52s
-deployment.apps/stats-service   2/2     2            2           2m52s
-deployment.apps/tasks-service   2/2     2            2           2m52s
+deployment.apps/frontend        2/2     2            2           3m55s
+deployment.apps/postgres        1/1     1            1           3m55s
+deployment.apps/redis           1/1     1            1           3m55s
+deployment.apps/stats-service   2/2     2            2           3m55s
+deployment.apps/tasks-service   2/2     2            2           3m55s
 
 NAME                    TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE
-service/frontend        ClusterIP   10.111.39.192   <none>        80/TCP     2m52s
-service/postgres        ClusterIP   10.111.36.244   <none>        5432/TCP   2m53s
-service/redis           ClusterIP   10.105.63.154   <none>        6379/TCP   2m52s
-service/stats-service   ClusterIP   10.101.61.116   <none>        8001/TCP   2m52s
-service/tasks-service   ClusterIP   10.98.95.74     <none>        8000/TCP   2m52s
+service/frontend        ClusterIP   10.97.185.89    <none>        80/TCP     3m54s
+service/postgres        ClusterIP   10.106.166.64   <none>        5432/TCP   3m55s
+service/redis           ClusterIP   10.97.125.249   <none>        6379/TCP   3m55s
+service/stats-service   ClusterIP   10.102.175.69   <none>        8001/TCP   3m55s
+service/tasks-service   ClusterIP   10.106.71.71    <none>        8000/TCP   3m55s
 
 NAME                                     CLASS   HOSTS   ADDRESS        PORTS   AGE
-ingress.networking.k8s.io/task-manager   nginx   *       192.168.49.2   80      2m52s
+ingress.networking.k8s.io/task-manager   nginx   *       192.168.49.2   80      3m54s
 
 NAME                                  STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
-persistentvolumeclaim/postgres-data   Bound    pvc-342adb04-f107-4ed8-86d0-4bb3f927ae95   1Gi        RWO            standard       <unset>                 2m53s
+persistentvolumeclaim/postgres-data   Bound    pvc-21fa444b-8fa1-4775-bf0a-299e529a8457   1Gi        RWO            standard       <unset>                 3m55s
 
 $ kubectl -n task-manager top pods
 NAME                             CPU(cores)   MEMORY(bytes)   
-frontend-6bf58d6b78-pw6q6        1m           8Mi             
-frontend-6bf58d6b78-xtl99        1m           8Mi             
-postgres-658b776795-npfw5        6m           32Mi            
-redis-5d86499dd5-vl686           9m           9Mi             
-stats-service-7fd6b744b-jsg2v    3m           44Mi            
-stats-service-7fd6b744b-rlvlk    3m           42Mi            
-tasks-service-864cdf84b5-rjwb7   12m          55Mi            
-tasks-service-864cdf84b5-rqft2   13m          55Mi            
+frontend-6bf58d6b78-pkmnl        1m           8Mi             
+frontend-6bf58d6b78-wgksw        1m           8Mi             
+postgres-658b776795-tpjpv        6m           37Mi            
+redis-5d86499dd5-trj9t           10m          9Mi             
+stats-service-7fd6b744b-d5rtr    3m           45Mi            
+stats-service-7fd6b744b-zjj4g    3m           42Mi            
+tasks-service-579d6d4b7b-8znlt   31m          56Mi            
+tasks-service-579d6d4b7b-qw5l5   27m          56Mi            
+tasks-service-864cdf84b5-65lg9   4m           56Mi            
+tasks-service-864cdf84b5-xz9j5   4m           56Mi            

@@ -1,16 +1,23 @@
 """Tasks service: CRUD API для задач, дані зберігаються в PostgreSQL."""
 
+import os
+import socket
 import time
 from contextlib import asynccontextmanager
 
 from fastapi import Depends, FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from sqlalchemy import text
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.orm import Session
 
 from . import models
 from .database import Base, engine, get_db
+
+# Версія образу (задається при збиранні) та ім'я пода - щоб бачити, яка репліка відповіла
+APP_VERSION = os.getenv("APP_VERSION", "dev")
+POD_NAME = socket.gethostname()
 
 
 def create_tables():
@@ -55,7 +62,18 @@ class TaskOut(BaseModel):
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    # liveness-проба: процес живий
+    return {"status": "ok", "service": "tasks-service", "version": APP_VERSION, "pod": POD_NAME}
+
+
+@app.get("/ready")
+def ready(db: Session = Depends(get_db)):
+    # readiness-проба: под готовий приймати трафік, лише якщо є з'єднання з базою
+    try:
+        db.execute(text("SELECT 1"))
+    except OperationalError:
+        raise HTTPException(status_code=503, detail="database unavailable") from None
+    return {"status": "ready"}
 
 
 @app.get("/tasks", response_model=list[TaskOut])

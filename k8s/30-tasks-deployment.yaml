@@ -1,0 +1,73 @@
+# tasks-service: REST API задач
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tasks-service
+  namespace: task-manager
+  labels:
+    app: tasks-service
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1             # під час оновлення можна запустити 1 зайвий под
+      maxUnavailable: 0       # жоден робочий под не вимикається, поки новий не готовий
+  selector:
+    matchLabels:
+      app: tasks-service      # має збігатися з labels шаблону пода нижче
+  template:
+    metadata:
+      labels:
+        app: tasks-service
+    spec:
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        # Чекаємо, поки PostgreSQL почне приймати з'єднання, і лише тоді запускаємо API
+        - name: wait-for-postgres
+          image: postgres:16-alpine
+          command: ["sh", "-c", "until pg_isready -h postgres -p 5432; do echo 'waiting for postgres'; sleep 2; done"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+      containers:
+        - name: tasks-service
+          image: ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: app-secret
+                  key: DATABASE_URL
+          lifecycle:
+            preStop:
+              exec:
+                # Після сигналу зупинки под ще 10 с обслуговує запити, поки kube-proxy
+                # прибирає його з маршрутизації - так rolling update проходить без втрачених запитів
+                command: ["sleep", "10"]
+          resources:
+            requests:
+              cpu: 100m
+              memory: 128Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10

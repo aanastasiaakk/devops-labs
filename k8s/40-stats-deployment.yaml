@@ -1,0 +1,71 @@
+# stats-service: статистика задач з кешем у Redis
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stats-service
+  namespace: task-manager
+  labels:
+    app: stats-service
+spec:
+  replicas: 2
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app: stats-service
+  template:
+    metadata:
+      labels:
+        app: stats-service
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: stats-service
+          image: ghcr.io/aanastasiaakk/devops-labs/stats-service:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8001
+          env:
+            - name: TASKS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: TASKS_URL
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: REDIS_URL
+            - name: CACHE_TTL
+              valueFrom:
+                configMapKeyRef:
+                  name: app-config
+                  key: CACHE_TTL
+          lifecycle:
+            preStop:
+              exec:
+                # Після сигналу зупинки под ще 10 с обслуговує запити, поки kube-proxy
+                # прибирає його з маршрутизації - так rolling update проходить без втрачених запитів
+                command: ["sleep", "10"]
+          resources:
+            requests:
+              cpu: 50m
+              memory: 96Mi
+            limits:
+              cpu: 300m
+              memory: 192Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 15
+            periodSeconds: 10

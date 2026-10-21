@@ -36,4 +36,4 @@ def test_stats_endpoint_uses_cache():
 
 
 def test_health():
-    assert client.get("/health").json() == {"status": "ok"}
+    assert client.get("/health").json()["status"] == "ok"

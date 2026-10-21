@@ -1,0 +1,14 @@
+# Несекретні параметри конфігурації застосунку
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: task-manager
+  labels:
+    app.kubernetes.io/part-of: task-manager
+data:
+  POSTGRES_DB: "tasks"                      # назва бази даних
+  POSTGRES_USER: "app"                      # користувач бази даних
+  TASKS_URL: "http://tasks-service:8000"    # адреса tasks-service для stats-service
+  REDIS_URL: "redis://redis:6379/0"         # адреса Redis
+  CACHE_TTL: "10"                           # час життя кешу статистики, секунд

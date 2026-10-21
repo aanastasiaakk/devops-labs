@@ -1,0 +1,32 @@
+
+
+========== 5c. Застосунок відповідає ==========
+
+$ curl -s -o /dev/null -w GET / -> HTTP %{http_code}\n http://localhost:8080/
+GET / -> HTTP 200
+
+$ curl -X POST http://localhost:8080/api/tasks
+{"id":1,"title":"Перевірка з Kubernetes","done":false}
+
+$ curl http://localhost:8080/api/tasks
+[{"id":1,"title":"Перевірка з Kubernetes","done":false}]
+
+$ curl http://localhost:8080/api/stats
+{"total":1,"done":0,"open":1,"percent_done":0.0,"cached":false}
+
+
+========== 5d. Значення з ConfigMap і Secret у контейнерах ==========
+
+$ kubectl exec deploy/stats-service -- env | grep -E "TASKS_URL|REDIS_URL|CACHE_TTL"
+TASKS_URL=http://tasks-service:8000
+REDIS_URL=redis://redis:6379/0
+CACHE_TTL=10
+
+$ kubectl exec deploy/tasks-service -- printenv DATABASE_URL
+Defaulted container "tasks-service" out of: tasks-service, wait-for-postgres (init)
+postgresql://app:lab3-demo-password@postgres:5432/tasks
+
+$ kubectl exec deploy/postgres -- printenv POSTGRES_DB POSTGRES_USER POSTGRES_PASSWORD
+tasks
+app
+lab3-demo-password

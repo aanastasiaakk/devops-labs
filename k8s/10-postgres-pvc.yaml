@@ -1,0 +1,14 @@
+# Постійне сховище для даних PostgreSQL - дані переживають перезапуск пода
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-data
+  namespace: task-manager
+  labels:
+    app: postgres
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi

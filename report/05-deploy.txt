@@ -1,0 +1,78 @@
+
+
+========== 5a. Застосування всіх маніфестів однією командою (з нуля) ==========
+
+$ kubectl delete namespace task-manager --wait=true
+namespace "task-manager" deleted
+
+$ kubectl apply -f k8s/
+namespace/task-manager created
+configmap/app-config created
+secret/app-secret created
+persistentvolumeclaim/postgres-data created
+deployment.apps/postgres created
+service/postgres created
+deployment.apps/redis created
+service/redis created
+deployment.apps/tasks-service created
+service/tasks-service created
+deployment.apps/stats-service created
+service/stats-service created
+deployment.apps/frontend created
+service/frontend created
+ingress.networking.k8s.io/task-manager created
+
+$ kubectl -n task-manager wait --for=condition=available deployment --all --timeout=300s
+deployment.apps/frontend condition met
+deployment.apps/postgres condition met
+deployment.apps/redis condition met
+deployment.apps/stats-service condition met
+deployment.apps/tasks-service condition met
+
+
+========== 5b. Створені об'єкти ==========
+
+$ kubectl -n task-manager get pods,deployments,replicasets,services,ingress,pvc,configmaps,secrets -o wide
+NAME                                 READY   STATUS    RESTARTS   AGE   IP            NODE       NOMINATED NODE   READINESS GATES
+pod/frontend-6bf58d6b78-pw6q6        1/1     Running   0          15s   10.244.0.69   minikube   <none>           <none>
+pod/frontend-6bf58d6b78-xtl99        1/1     Running   0          15s   10.244.0.70   minikube   <none>           <none>
+pod/postgres-658b776795-npfw5        1/1     Running   0          16s   10.244.0.63   minikube   <none>           <none>
+pod/redis-5d86499dd5-vl686           1/1     Running   0          15s   10.244.0.64   minikube   <none>           <none>
+pod/stats-service-7fd6b744b-jsg2v    1/1     Running   0          15s   10.244.0.68   minikube   <none>           <none>
+pod/stats-service-7fd6b744b-rlvlk    1/1     Running   0          15s   10.244.0.67   minikube   <none>           <none>
+pod/tasks-service-864cdf84b5-cmxrc   1/1     Running   0          15s   10.244.0.66   minikube   <none>           <none>
+pod/tasks-service-864cdf84b5-w7h6k   1/1     Running   0          15s   10.244.0.65   minikube   <none>           <none>
+
+NAME                            READY   UP-TO-DATE   AVAILABLE   AGE   CONTAINERS      IMAGES                                                  SELECTOR
+deployment.apps/frontend        2/2     2            2           15s   frontend        ghcr.io/aanastasiaakk/devops-labs/frontend:1.0.0        app=frontend
+deployment.apps/postgres        1/1     1            1           16s   postgres        postgres:16-alpine                                      app=postgres
+deployment.apps/redis           1/1     1            1           15s   redis           redis:7-alpine                                          app=redis
+deployment.apps/stats-service   2/2     2            2           15s   stats-service   ghcr.io/aanastasiaakk/devops-labs/stats-service:1.0.0   app=stats-service
+deployment.apps/tasks-service   2/2     2            2           15s   tasks-service   ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.0.0   app=tasks-service
+
+NAME                                       DESIRED   CURRENT   READY   AGE   CONTAINERS      IMAGES                                                  SELECTOR
+replicaset.apps/frontend-6bf58d6b78        2         2         2       15s   frontend        ghcr.io/aanastasiaakk/devops-labs/frontend:1.0.0        app=frontend,pod-template-hash=6bf58d6b78
+replicaset.apps/postgres-658b776795        1         1         1       16s   postgres        postgres:16-alpine                                      app=postgres,pod-template-hash=658b776795
+replicaset.apps/redis-5d86499dd5           1         1         1       15s   redis           redis:7-alpine                                          app=redis,pod-template-hash=5d86499dd5
+replicaset.apps/stats-service-7fd6b744b    2         2         2       15s   stats-service   ghcr.io/aanastasiaakk/devops-labs/stats-service:1.0.0   app=stats-service,pod-template-hash=7fd6b744b
+replicaset.apps/tasks-service-864cdf84b5   2         2         2       15s   tasks-service   ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.0.0   app=tasks-service,pod-template-hash=864cdf84b5
+
+NAME                    TYPE        CLUSTER-IP      EXTERNAL-IP   PORT(S)    AGE   SELECTOR
+service/frontend        ClusterIP   10.111.39.192   <none>        80/TCP     15s   app=frontend
+service/postgres        ClusterIP   10.111.36.244   <none>        5432/TCP   16s   app=postgres
+service/redis           ClusterIP   10.105.63.154   <none>        6379/TCP   15s   app=redis
+service/stats-service   ClusterIP   10.101.61.116   <none>        8001/TCP   15s   app=stats-service
+service/tasks-service   ClusterIP   10.98.95.74     <none>        8000/TCP   15s   app=tasks-service
+
+NAME                                     CLASS   HOSTS   ADDRESS   PORTS   AGE
+ingress.networking.k8s.io/task-manager   nginx   *                 80      15s
+
+NAME                                  STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE   VOLUMEMODE
+persistentvolumeclaim/postgres-data   Bound    pvc-342adb04-f107-4ed8-86d0-4bb3f927ae95   1Gi        RWO            standard       <unset>                 16s   Filesystem
+
+NAME                         DATA   AGE
+configmap/app-config         5      16s
+configmap/kube-root-ca.crt   1      16s
+
+NAME                TYPE     DATA   AGE
+secret/app-secret   Opaque   2      16s

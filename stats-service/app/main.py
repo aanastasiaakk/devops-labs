@@ -6,6 +6,7 @@
 
 import json
 import os
+import socket
 
 import httpx
 import redis
@@ -16,6 +17,8 @@ TASKS_URL = os.getenv("TASKS_URL", "http://localhost:8000")
 REDIS_URL = os.getenv("REDIS_URL", "redis://localhost:6379/0")
 CACHE_TTL = int(os.getenv("CACHE_TTL", "5"))
 CACHE_KEY = "stats"
+APP_VERSION = os.getenv("APP_VERSION", "dev")
+POD_NAME = socket.gethostname()
 
 app = FastAPI(title="Stats service")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
@@ -45,7 +48,7 @@ def fetch_tasks() -> list[dict]:
 
 @app.get("/health")
 def health():
-    return {"status": "ok"}
+    return {"status": "ok", "service": "stats-service", "version": APP_VERSION, "pod": POD_NAME}
 
 
 @app.get("/stats")

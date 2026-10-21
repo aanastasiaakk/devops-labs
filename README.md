@@ -132,3 +132,90 @@ docker run --rm -p 8001:8001 ghcr.io/aanastasiaakk/devops-labs/stats-service:lat
 pip install ruff==0.8.4
 cd tasks-service && ruff check . && ruff format --check .
 ```
+
+---
+
+# Лабораторна робота №3 — Розгортання в Kubernetes
+
+Застосунок описано маніфестами Kubernetes у каталозі [`k8s/`](k8s/) (один файл на об'єкт) і розгорнуто в локальному кластері **minikube**.
+
+## Об'єкти
+
+| Файл | Об'єкт | Призначення |
+|---|---|---|
+| `00-namespace.yaml` | Namespace `task-manager` | окремий простір імен для всіх об'єктів проєкту |
+| `01-configmap.yaml` | ConfigMap `app-config` | несекретні параметри |
+| `02-secret.yaml` | Secret `app-secret` | пароль і рядок підключення до БД |
+| `10-postgres-pvc.yaml` | PersistentVolumeClaim `postgres-data` | постійне сховище PostgreSQL (1Gi) |
+| `11-postgres-deployment.yaml` | Deployment `postgres` | база даних (1 репліка, стратегія Recreate) |
+| `12-postgres-service.yaml` | Service `postgres` (ClusterIP) | `postgres:5432` |
+| `20-redis-deployment.yaml` | Deployment `redis` | кеш |
+| `21-redis-service.yaml` | Service `redis` (ClusterIP) | `redis:6379` |
+| `30-tasks-deployment.yaml` | Deployment `tasks-service` | API задач, 2 репліки, rolling update |
+| `31-tasks-service.yaml` | Service `tasks-service` (ClusterIP) | `tasks-service:8000` |
+| `40-stats-deployment.yaml` | Deployment `stats-service` | статистика, 2 репліки |
+| `41-stats-service.yaml` | Service `stats-service` (ClusterIP) | `stats-service:8001` |
+| `50-frontend-deployment.yaml` | Deployment `frontend` | nginx + сторінка, 2 репліки |
+| `51-frontend-service.yaml` | Service `frontend` (ClusterIP) | `frontend:80` |
+| `60-ingress.yaml` | Ingress `task-manager` | доступ з хоста: `/` → `frontend:80` |
+
+Кожен Deployment має узгоджені `labels`/`selector`, `requests`/`limits` для CPU і пам'яті, `livenessProbe` і `readinessProbe`.
+У tasks-service readiness-проба `/ready` перевіряє з'єднання з базою, liveness-проба `/health` — що процес живий.
+Сервіси застосунку оновлюються стратегією `RollingUpdate` з `maxSurge: 1`, `maxUnavailable: 0` — без простою.
+init-контейнер `wait-for-postgres` у tasks-service чекає готовності бази перед стартом API.
+Хук `preStop` (`sleep 10`) дає старому поду дообслужити запити, поки його прибирають з маршрутизації, тому під час оновлення не губиться жоден запит.
+
+## Параметри конфігурації
+
+**ConfigMap `app-config`**
+
+| Ключ | Значення | Хто використовує |
+|---|---|---|
+| `POSTGRES_DB` | `tasks` | postgres |
+| `POSTGRES_USER` | `app` | postgres |
+| `TASKS_URL` | `http://tasks-service:8000` | stats-service |
+| `REDIS_URL` | `redis://redis:6379/0` | stats-service |
+| `CACHE_TTL` | `10` (секунд) | stats-service |
+
+**Secret `app-secret`** (навчальні значення, не від реальних систем)
+
+| Ключ | Хто використовує |
+|---|---|
+| `POSTGRES_PASSWORD` | postgres |
+| `DATABASE_URL` | tasks-service |
+
+## Версії образів
+
+Образи публікуються в GitHub Container Registry пайплайном CI за git-тегами:
+`git tag v1.0.0 && git push origin v1.0.0` → `ghcr.io/aanastasiaakk/devops-labs/<service>:1.0.0` (аналогічно `v1.1.0` → `1.1.0`).
+Образи мультиплатформні (`linux/amd64`, `linux/arm64`), тег `latest` у маніфестах не використовується.
+Версія передається при збиранні (`--build-arg APP_VERSION=...`) і видна у відповіді `/api/version` разом з іменем пода.
+
+## Порядок розгортання
+
+```bash
+# 1. Кластер
+minikube start --driver=docker --cpus=2 --memory=4096
+minikube addons enable metrics-server
+minikube addons enable ingress
+
+# 2. Образи завантажуються з GHCR автоматично під час розгортання.
+#    Запасний варіант без інтернету - зібрати локально:  LOCAL_IMAGES=1 ./scripts/lab3-demo.sh
+
+# 3. Розгортання однією командою
+kubectl apply -f k8s/
+kubectl -n task-manager get pods,deploy,rs,svc,ingress,pvc
+
+# 4. Доступ з браузера (в окремому терміналі), потім http://127.0.0.1
+minikube tunnel
+```
+
+## Демонстрація
+
+Скрипт [`scripts/lab3-demo.sh`](scripts/lab3-demo.sh) виконує всі етапи (кластер, образи, розгортання, самовідновлення, масштабування, rolling update, відкат, діагностика ImagePullBackOff) і зберігає вивід команд у [`report/`](report/).
+
+```bash
+./scripts/lab3-demo.sh
+```
+
+Видалити все: `kubectl delete namespace task-manager`.

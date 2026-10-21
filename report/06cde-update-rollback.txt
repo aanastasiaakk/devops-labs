@@ -1,0 +1,99 @@
+
+
+========== 6c/6e. Rolling update 1.0.0 -> 1.1.0 під безперервним навантаженням ==========
+
+$ kubectl -n task-manager set image deployment/tasks-service tasks-service=ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.1.0
+deployment.apps/tasks-service image updated
+
+$ kubectl -n task-manager annotate deployment/tasks-service kubernetes.io/change-cause=update image to 1.1.0 --overwrite
+deployment.apps/tasks-service annotated
+
+$ kubectl -n task-manager rollout status deployment/tasks-service --timeout=180s
+Waiting for deployment "tasks-service" rollout to finish: 1 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 1 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 1 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 2 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 2 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 2 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 3 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 3 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 3 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 3 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "tasks-service" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "tasks-service" rollout to finish: 1 old replicas are pending termination...
+deployment "tasks-service" successfully rolled out
+
+$ kubectl -n task-manager get pods -l app=tasks-service
+NAME                             READY   STATUS        RESTARTS   AGE
+tasks-service-579d6d4b7b-46bc7   1/1     Running       0          10s
+tasks-service-579d6d4b7b-jgpvm   1/1     Running       0          31s
+tasks-service-579d6d4b7b-nscw6   1/1     Running       0          17s
+tasks-service-579d6d4b7b-w7m55   1/1     Running       0          24s
+tasks-service-864cdf84b5-q24dj   1/1     Terminating   0          59s
+tasks-service-864cdf84b5-w7h6k   1/1     Terminating   0          75s
+
+$ kubectl -n task-manager get replicasets -l app=tasks-service
+NAME                       DESIRED   CURRENT   READY   AGE
+tasks-service-579d6d4b7b   4         4         4       31s
+tasks-service-864cdf84b5   0         0         0       75s
+
+Запитів під час оновлення: 100
+Успішних (HTTP 200): 100
+Невдалих: 0
+Версії у відповідях:
+  56 1.0.0
+  44 1.1.0
+
+Перехід версій (перші і останні рядки журналу):
+21:42:36 {"status":"ok","service":"tasks-service","version":"1.0.0","pod":"tasks-service-864cdf84b5-w7h6k"} HTTP=200
+21:42:37 {"status":"ok","service":"tasks-service","version":"1.0.0","pod":"tasks-service-864cdf84b5-4jvcq"} HTTP=200
+21:42:37 {"status":"ok","service":"tasks-service","version":"1.0.0","pod":"tasks-service-864cdf84b5-4jvcq"} HTTP=200
+...
+21:43:08 {"status":"ok","service":"tasks-service","version":"1.1.0","pod":"tasks-service-579d6d4b7b-nscw6"} HTTP=200
+21:43:09 {"status":"ok","service":"tasks-service","version":"1.1.0","pod":"tasks-service-579d6d4b7b-46bc7"} HTTP=200
+21:43:09 {"status":"ok","service":"tasks-service","version":"1.1.0","pod":"tasks-service-579d6d4b7b-nscw6"} HTTP=200
+
+
+========== 6d. Історія оновлень і відкат ==========
+
+$ kubectl -n task-manager rollout history deployment/tasks-service
+deployment.apps/tasks-service 
+REVISION  CHANGE-CAUSE
+1         <none>
+2         update image to 1.1.0
+
+
+$ kubectl -n task-manager rollout undo deployment/tasks-service
+Warning: resource deployments/tasks-service was previously managed with 'kubectl apply'. Rolling back will not update the kubectl.kubernetes.io/last-applied-configuration annotation, which may cause unexpected behavior on future 'kubectl apply' operations. Consider using 'kubectl apply' with your previous configuration file instead.
+deployment.apps/tasks-service rolled back
+
+$ kubectl -n task-manager annotate deployment/tasks-service kubernetes.io/change-cause=rollback to 1.0.0 --overwrite
+deployment.apps/tasks-service annotated
+
+$ kubectl -n task-manager rollout status deployment/tasks-service --timeout=180s
+Waiting for deployment "tasks-service" rollout to finish: 1 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 1 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 1 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 1 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 2 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 2 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 2 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 2 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 3 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 3 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 3 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 3 out of 4 new replicas have been updated...
+Waiting for deployment "tasks-service" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "tasks-service" rollout to finish: 1 old replicas are pending termination...
+Waiting for deployment "tasks-service" rollout to finish: 1 old replicas are pending termination...
+deployment "tasks-service" successfully rolled out
+
+$ kubectl -n task-manager rollout history deployment/tasks-service
+deployment.apps/tasks-service 
+REVISION  CHANGE-CAUSE
+2         update image to 1.1.0
+3         rollback to 1.0.0
+
+
+Версія після відкату: {"status":"ok","service":"tasks-service","version":"1.1.0","pod":"tasks-service-579d6d4b7b-jgpvm"}

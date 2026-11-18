@@ -1,0 +1,114 @@
+nameOverride: ""
+fullnameOverride: ""
+
+image:
+  tag: "1.1.0"
+  pullPolicy: IfNotPresent
+
+tasksService:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/aanastasiaakk/devops-labs/tasks-service
+    tag: ""
+  containerPort: 8000
+  service:
+    type: ClusterIP
+    port: 8000
+  resources:
+    requests:
+      cpu: 50m
+      memory: 96Mi
+    limits:
+      cpu: 250m
+      memory: 192Mi
+
+statsService:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/aanastasiaakk/devops-labs/stats-service
+    tag: ""
+  containerPort: 8001
+  service:
+    type: ClusterIP
+    port: 8001
+  resources:
+    requests:
+      cpu: 25m
+      memory: 64Mi
+    limits:
+      cpu: 150m
+      memory: 128Mi
+
+frontend:
+  replicaCount: 1
+  image:
+    repository: ghcr.io/aanastasiaakk/devops-labs/frontend
+    tag: ""
+  containerPort: 80
+  service:
+    type: ClusterIP
+    port: 80
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+postgresql:
+  replicaCount: 1
+  image:
+    repository: postgres
+    tag: "16-alpine"
+  database: tasks
+  username: app
+  password: ""
+  service:
+    port: 5432
+  persistence:
+    enabled: true
+    size: 1Gi
+    accessMode: ReadWriteOnce
+    storageClass: ""
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 250m
+      memory: 256Mi
+
+redis:
+  replicaCount: 1
+  image:
+    repository: redis
+    tag: "7-alpine"
+  service:
+    port: 6379
+  resources:
+    requests:
+      cpu: 25m
+      memory: 32Mi
+    limits:
+      cpu: 100m
+      memory: 64Mi
+
+config:
+  cacheTTL: 5
+
+ingress:
+  enabled: false
+  className: nginx
+  host: ""
+  path: /
+  annotations: {}
+
+hooks:
+  preUpgradeCheck:
+    enabled: true
+
+tests:
+  image:
+    repository: curlimages/curl
+    tag: "8.11.1"

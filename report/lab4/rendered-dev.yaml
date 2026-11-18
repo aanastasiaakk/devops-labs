@@ -1,0 +1,708 @@
+---
+# Source: task-manager/templates/secret.yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: task-manager-secret
+  namespace: lab4
+  labels:
+    helm.sh/chart: task-manager-0.1.0
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/version: "1.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: task-manager
+type: Opaque
+stringData:
+  POSTGRES_PASSWORD: "only-for-diff"
+  DATABASE_URL: "postgresql://app:only-for-diff@task-manager-postgres:5432/tasks"
+---
+# Source: task-manager/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: task-manager-config
+  namespace: lab4
+  labels:
+    helm.sh/chart: task-manager-0.1.0
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/version: "1.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: task-manager
+data:
+  POSTGRES_DB: "tasks"
+  POSTGRES_USER: "app"
+  TASKS_URL: "http://task-manager-tasks-service:8000"
+  REDIS_URL: "redis://task-manager-redis:6379/0"
+  CACHE_TTL: "5"
+  default.conf: |
+    server {
+        listen 80;
+
+        location / {
+            root /usr/share/nginx/html;
+            index index.html;
+        }
+
+        location /api/tasks {
+            proxy_pass http://task-manager-tasks-service:8000/tasks;
+        }
+
+        location /api/version {
+            proxy_pass http://task-manager-tasks-service:8000/health;
+        }
+
+        location /api/stats {
+            proxy_pass http://task-manager-stats-service:8001/stats;
+        }
+    }
+---
+# Source: task-manager/templates/postgres-pvc.yaml
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: task-manager-postgres-data
+  namespace: lab4
+  labels:
+    helm.sh/chart: task-manager-0.1.0
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/version: "1.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: task-manager
+    app.kubernetes.io/component: postgres
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 1Gi
+---
+# Source: task-manager/templates/frontend-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-manager-frontend
+  namespace: lab4
+  labels:
+    helm.sh/chart: task-manager-0.1.0
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/version: "1.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: task-manager
+    app.kubernetes.io/component: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/component: frontend
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80
+---
+# Source: task-manager/templates/postgres-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-manager-postgres
+  namespace: lab4
+  labels:
+    helm.sh/chart: task-manager-0.1.0
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/version: "1.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: task-manager
+    app.kubernetes.io/component: postgres
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/component: postgres
+  ports:
+    - port: 5432
+      targetPort: 5432
+---
+# Source: task-manager/templates/redis-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-manager-redis
+  namespace: lab4
+  labels:
+    helm.sh/chart: task-manager-0.1.0
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/version: "1.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: task-manager
+    app.kubernetes.io/component: redis
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/component: redis
+  ports:
+    - port: 6379
+      targetPort: 6379
+---
+# Source: task-manager/templates/stats-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-manager-stats-service
+  namespace: lab4
+  labels:
+    helm.sh/chart: task-manager-0.1.0
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/version: "1.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: task-manager
+    app.kubernetes.io/component: stats-service
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/component: stats-service
+  ports:
+    - port: 8001
+      targetPort: 8001
+---
+# Source: task-manager/templates/tasks-service.yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: task-manager-tasks-service
+  namespace: lab4
+  labels:
+    helm.sh/chart: task-manager-0.1.0
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/version: "1.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: task-manager
+    app.kubernetes.io/component: tasks-service
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/component: tasks-service
+  ports:
+    - port: 8000
+      targetPort: 8000
+---
+# Source: task-manager/templates/frontend-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-manager-frontend
+  namespace: lab4
+  labels:
+    helm.sh/chart: task-manager-0.1.0
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/version: "1.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: task-manager
+    app.kubernetes.io/component: frontend
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: task-manager
+      app.kubernetes.io/instance: task-manager
+      app.kubernetes.io/component: frontend
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: task-manager-0.1.0
+        app.kubernetes.io/name: task-manager
+        app.kubernetes.io/instance: task-manager
+        app.kubernetes.io/version: "1.1.0"
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: task-manager
+        app.kubernetes.io/component: frontend
+      annotations:
+        checksum/config: 1f1534fc31072a6780f74f2eb15653977c865b6c08b0764613ceaf937607526c
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: frontend
+          image: ghcr.io/aanastasiaakk/devops-labs/frontend:1.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 80
+          volumeMounts:
+            - name: nginx-config
+              mountPath: /etc/nginx/conf.d
+              readOnly: true
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "10"]
+          resources:
+            limits:
+              cpu: 100m
+              memory: 64Mi
+            requests:
+              cpu: 25m
+              memory: 32Mi
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 80
+            initialDelaySeconds: 10
+            periodSeconds: 10
+      volumes:
+        - name: nginx-config
+          configMap:
+            name: task-manager-config
+            items:
+              - key: default.conf
+                path: default.conf
+---
+# Source: task-manager/templates/postgres-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-manager-postgres
+  namespace: lab4
+  labels:
+    helm.sh/chart: task-manager-0.1.0
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/version: "1.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: task-manager
+    app.kubernetes.io/component: postgres
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: task-manager
+      app.kubernetes.io/instance: task-manager
+      app.kubernetes.io/component: postgres
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: task-manager-0.1.0
+        app.kubernetes.io/name: task-manager
+        app.kubernetes.io/instance: task-manager
+        app.kubernetes.io/version: "1.1.0"
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: task-manager
+        app.kubernetes.io/component: postgres
+    spec:
+      containers:
+        - name: postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5432
+          env:
+            - name: POSTGRES_DB
+              valueFrom:
+                configMapKeyRef:
+                  name: task-manager-config
+                  key: POSTGRES_DB
+            - name: POSTGRES_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: task-manager-config
+                  key: POSTGRES_USER
+            - name: POSTGRES_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: task-manager-secret
+                  key: POSTGRES_PASSWORD
+            - name: PGDATA
+              value: /var/lib/postgresql/data/pgdata
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            limits:
+              cpu: 250m
+              memory: 256Mi
+            requests:
+              cpu: 50m
+              memory: 128Mi
+          readinessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+            initialDelaySeconds: 30
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: task-manager-postgres-data
+---
+# Source: task-manager/templates/redis-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-manager-redis
+  namespace: lab4
+  labels:
+    helm.sh/chart: task-manager-0.1.0
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/version: "1.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: task-manager
+    app.kubernetes.io/component: redis
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: task-manager
+      app.kubernetes.io/instance: task-manager
+      app.kubernetes.io/component: redis
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: task-manager-0.1.0
+        app.kubernetes.io/name: task-manager
+        app.kubernetes.io/instance: task-manager
+        app.kubernetes.io/version: "1.1.0"
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: task-manager
+        app.kubernetes.io/component: redis
+    spec:
+      containers:
+        - name: redis
+          image: redis:7-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6379
+          resources:
+            limits:
+              cpu: 100m
+              memory: 64Mi
+            requests:
+              cpu: 25m
+              memory: 32Mi
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 10
+            periodSeconds: 10
+---
+# Source: task-manager/templates/stats-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-manager-stats-service
+  namespace: lab4
+  labels:
+    helm.sh/chart: task-manager-0.1.0
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/version: "1.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: task-manager
+    app.kubernetes.io/component: stats-service
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: task-manager
+      app.kubernetes.io/instance: task-manager
+      app.kubernetes.io/component: stats-service
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: task-manager-0.1.0
+        app.kubernetes.io/name: task-manager
+        app.kubernetes.io/instance: task-manager
+        app.kubernetes.io/version: "1.1.0"
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: task-manager
+        app.kubernetes.io/component: stats-service
+      annotations:
+        checksum/config: 1f1534fc31072a6780f74f2eb15653977c865b6c08b0764613ceaf937607526c
+    spec:
+      terminationGracePeriodSeconds: 30
+      containers:
+        - name: stats-service
+          image: ghcr.io/aanastasiaakk/devops-labs/stats-service:1.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8001
+          env:
+            - name: TASKS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: task-manager-config
+                  key: TASKS_URL
+            - name: REDIS_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: task-manager-config
+                  key: REDIS_URL
+            - name: CACHE_TTL
+              valueFrom:
+                configMapKeyRef:
+                  name: task-manager-config
+                  key: CACHE_TTL
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "10"]
+          resources:
+            limits:
+              cpu: 150m
+              memory: 128Mi
+            requests:
+              cpu: 25m
+              memory: 64Mi
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8001
+            initialDelaySeconds: 15
+            periodSeconds: 10
+---
+# Source: task-manager/templates/tasks-deployment.yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task-manager-tasks-service
+  namespace: lab4
+  labels:
+    helm.sh/chart: task-manager-0.1.0
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/version: "1.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: task-manager
+    app.kubernetes.io/component: tasks-service
+spec:
+  replicas: 1
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 0
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: task-manager
+      app.kubernetes.io/instance: task-manager
+      app.kubernetes.io/component: tasks-service
+  template:
+    metadata:
+      labels:
+        helm.sh/chart: task-manager-0.1.0
+        app.kubernetes.io/name: task-manager
+        app.kubernetes.io/instance: task-manager
+        app.kubernetes.io/version: "1.1.0"
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/part-of: task-manager
+        app.kubernetes.io/component: tasks-service
+      annotations:
+        checksum/config: 1f1534fc31072a6780f74f2eb15653977c865b6c08b0764613ceaf937607526c
+    spec:
+      terminationGracePeriodSeconds: 30
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "until pg_isready -h task-manager-postgres -p 5432; do echo 'waiting for postgres'; sleep 2; done"]
+          resources:
+            requests:
+              cpu: 10m
+              memory: 16Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+      containers:
+        - name: tasks-service
+          image: ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.1.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8000
+          env:
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef:
+                  name: task-manager-secret
+                  key: DATABASE_URL
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "10"]
+          resources:
+            limits:
+              cpu: 250m
+              memory: 192Mi
+            requests:
+              cpu: 50m
+              memory: 96Mi
+          readinessProbe:
+            httpGet:
+              path: /ready
+              port: 8000
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+---
+# Source: task-manager/templates/tests/test-app.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: task-manager-test
+  namespace: lab4
+  labels:
+    helm.sh/chart: task-manager-0.1.0
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/version: "1.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: task-manager
+    app.kubernetes.io/component: test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: smoke-test
+      image: curlimages/curl:8.11.1
+      imagePullPolicy: IfNotPresent
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          BASE="http://task-manager-frontend:80"
+          echo "1) frontend віддає сторінку";   curl -fsS -o /dev/null -w "   HTTP %{http_code}\n" "$BASE/"
+          echo "2) tasks-service і база";       curl -fsS "$BASE/api/tasks"; echo
+          echo "3) stats-service і Redis";      curl -fsS "$BASE/api/stats"; echo
+          echo "4) версія застосунку";          curl -fsS "$BASE/api/version" | grep '"version"'
+          echo "Усі перевірки пройдено"
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          cpu: 100m
+          memory: 32Mi
+---
+# Source: task-manager/templates/hooks/pre-upgrade-db-check.yaml
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: task-manager-pre-upgrade-check
+  namespace: lab4
+  labels:
+    helm.sh/chart: task-manager-0.1.0
+    app.kubernetes.io/name: task-manager
+    app.kubernetes.io/instance: task-manager
+    app.kubernetes.io/version: "1.1.0"
+    app.kubernetes.io/managed-by: Helm
+    app.kubernetes.io/part-of: task-manager
+    app.kubernetes.io/component: pre-upgrade-check
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 120
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: task-manager
+        app.kubernetes.io/instance: task-manager
+        app.kubernetes.io/component: pre-upgrade-check
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: db-check
+          image: postgres:16-alpine
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PGHOST
+              value: "task-manager-postgres"
+            - name: PGPORT
+              value: "5432"
+            - name: PGDATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: task-manager-config
+                  key: POSTGRES_DB
+            - name: PGUSER
+              valueFrom:
+                configMapKeyRef:
+                  name: task-manager-config
+                  key: POSTGRES_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: task-manager-secret
+                  key: POSTGRES_PASSWORD
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              echo "[pre-upgrade] реліз task-manager: перевірка перед оновленням до ревізії 1"
+              pg_isready -t 30
+              COUNT=$(psql -tAc 'SELECT count(*) FROM tasks')
+              echo "[pre-upgrade] задач у базі перед оновленням: $COUNT"
+              echo "[pre-upgrade] база доступна, оновлення можна продовжувати"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi

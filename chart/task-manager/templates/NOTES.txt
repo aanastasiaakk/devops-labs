@@ -1,0 +1,22 @@
+{{- $frontend := include "task-manager.componentName" (dict "ctx" $ "component" "frontend") -}}
+Task Manager встановлено.
+  Реліз:     {{ .Release.Name }} (ревізія {{ .Release.Revision }})
+  Namespace: {{ .Release.Namespace }}
+  Версія:    {{ .Values.image.tag | default .Chart.AppVersion }}
+
+1. Дочекатися, поки всі поди стануть Running:
+     kubectl -n {{ .Release.Namespace }} get pods -l app.kubernetes.io/instance={{ .Release.Name }} -w
+
+2. Відкрити застосунок:
+{{- if .Values.ingress.enabled }}
+     Ingress увімкнено. В окремому терміналі запустити тунель minikube:
+       minikube tunnel
+     і відкрити в браузері http://{{ .Values.ingress.host | default "127.0.0.1" }}/
+{{- else }}
+     Ingress вимкнено. Прокинути порт frontend на свій комп'ютер:
+       kubectl -n {{ .Release.Namespace }} port-forward svc/{{ $frontend }} 8080:{{ .Values.frontend.service.port }}
+     і відкрити в браузері http://localhost:8080/
+{{- end }}
+
+3. Перевірити реліз тестом:
+     helm test {{ .Release.Name }} -n {{ .Release.Namespace }}

@@ -1,0 +1,15 @@
+{{- $c := dict "ctx" $ "component" "stats-service" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "task-manager.componentName" $c }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "task-manager.componentLabels" $c | nindent 4 }}
+spec:
+  type: {{ .Values.statsService.service.type }}
+  selector:
+    {{- include "task-manager.componentSelectorLabels" $c | nindent 4 }}
+  ports:
+    - port: {{ .Values.statsService.service.port }}
+      targetPort: {{ .Values.statsService.containerPort }}

@@ -1,0 +1,35 @@
+{{- $frontend := include "task-manager.componentName" (dict "ctx" $ "component" "frontend") }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "task-manager.componentName" (dict "ctx" $ "component" "test") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "task-manager.componentLabels" (dict "ctx" $ "component" "test") | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: smoke-test
+      image: {{ printf "%s:%s" .Values.tests.image.repository (toString .Values.tests.image.tag) }}
+      imagePullPolicy: IfNotPresent
+      command:
+        - sh
+        - -c
+        - |
+          set -e
+          BASE="http://{{ $frontend }}:{{ .Values.frontend.service.port }}"
+          echo "1) frontend віддає сторінку";   curl -fsS -o /dev/null -w "   HTTP %{http_code}\n" "$BASE/"
+          echo "2) tasks-service і база";       curl -fsS "$BASE/api/tasks"; echo
+          echo "3) stats-service і Redis";      curl -fsS "$BASE/api/stats"; echo
+          echo "4) версія застосунку";          curl -fsS "$BASE/api/version" | grep '"version"'
+          echo "Усі перевірки пройдено"
+      resources:
+        requests:
+          cpu: 10m
+          memory: 16Mi
+        limits:
+          cpu: 100m
+          memory: 32Mi

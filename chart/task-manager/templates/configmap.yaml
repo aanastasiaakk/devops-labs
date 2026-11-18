@@ -1,0 +1,37 @@
+{{- $tasks := include "task-manager.componentName" (dict "ctx" $ "component" "tasks-service") }}
+{{- $stats := include "task-manager.componentName" (dict "ctx" $ "component" "stats-service") }}
+{{- $redis := include "task-manager.componentName" (dict "ctx" $ "component" "redis") }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "task-manager.configName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "task-manager.labels" . | nindent 4 }}
+data:
+  POSTGRES_DB: {{ .Values.postgresql.database | quote }}
+  POSTGRES_USER: {{ .Values.postgresql.username | quote }}
+  TASKS_URL: {{ printf "http://%s:%v" $tasks .Values.tasksService.service.port | quote }}
+  REDIS_URL: {{ printf "redis://%s:%v/0" $redis .Values.redis.service.port | quote }}
+  CACHE_TTL: {{ .Values.config.cacheTTL | quote }}
+  default.conf: |
+    server {
+        listen {{ .Values.frontend.containerPort }};
+
+        location / {
+            root /usr/share/nginx/html;
+            index index.html;
+        }
+
+        location /api/tasks {
+            proxy_pass http://{{ $tasks }}:{{ .Values.tasksService.service.port }}/tasks;
+        }
+
+        location /api/version {
+            proxy_pass http://{{ $tasks }}:{{ .Values.tasksService.service.port }}/health;
+        }
+
+        location /api/stats {
+            proxy_pass http://{{ $stats }}:{{ .Values.statsService.service.port }}/stats;
+        }
+    }

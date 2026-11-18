@@ -1,0 +1,4 @@
+[pre-upgrade] реліз task-manager: перевірка перед оновленням до ревізії 3
+task-manager-postgres:5432 - accepting connections
+[pre-upgrade] задач у базі перед оновленням: 1
+[pre-upgrade] база доступна, оновлення можна продовжувати

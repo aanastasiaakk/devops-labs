@@ -1,0 +1,22 @@
+Release "task-manager" has been upgraded. Happy Helming!
+NAME: task-manager
+LAST DEPLOYED: Wed Nov 18 16:44:10 2026
+NAMESPACE: lab4
+STATUS: deployed
+REVISION: 3
+NOTES:
+Task Manager встановлено.
+  Реліз:     task-manager (ревізія 3)
+  Namespace: lab4
+  Версія:    1.0.0
+
+1. Дочекатися, поки всі поди стануть Running:
+     kubectl -n lab4 get pods -l app.kubernetes.io/instance=task-manager -w
+
+2. Відкрити застосунок:
+     Ingress увімкнено. В окремому терміналі запустити тунель minikube:
+       minikube tunnel
+     і відкрити в браузері http://127.0.0.1/
+
+3. Перевірити реліз тестом:
+     helm test task-manager -n lab4

@@ -1,0 +1,120 @@
+
+[1;36m==================== п.3  minikube і Argo CD ====================[0m
+
+[1;32m$ kubectl get nodes[0m
+NAME       STATUS   ROLES           AGE   VERSION
+minikube   Ready    control-plane   27d   v1.37.0
+
+[1;32m$ kubectl apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml[0m
+customresourcedefinition.apiextensions.k8s.io/applications.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/applicationsets.argoproj.io serverside-applied
+customresourcedefinition.apiextensions.k8s.io/appprojects.argoproj.io serverside-applied
+serviceaccount/argocd-application-controller serverside-applied
+serviceaccount/argocd-applicationset-controller serverside-applied
+serviceaccount/argocd-dex-server serverside-applied
+serviceaccount/argocd-notifications-controller serverside-applied
+serviceaccount/argocd-redis serverside-applied
+serviceaccount/argocd-repo-server serverside-applied
+serviceaccount/argocd-server serverside-applied
+role.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-dex-server serverside-applied
+role.rbac.authorization.k8s.io/argocd-notifications-controller serverside-applied
+role.rbac.authorization.k8s.io/argocd-redis serverside-applied
+role.rbac.authorization.k8s.io/argocd-server serverside-applied
+clusterrole.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+clusterrole.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+clusterrole.rbac.authorization.k8s.io/argocd-server serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-dex-server serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-notifications-controller serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-redis serverside-applied
+rolebinding.rbac.authorization.k8s.io/argocd-server serverside-applied
+clusterrolebinding.rbac.authorization.k8s.io/argocd-application-controller serverside-applied
+clusterrolebinding.rbac.authorization.k8s.io/argocd-applicationset-controller serverside-applied
+clusterrolebinding.rbac.authorization.k8s.io/argocd-server serverside-applied
+configmap/argocd-cm serverside-applied
+configmap/argocd-cmd-params-cm serverside-applied
+configmap/argocd-gpg-keys-cm serverside-applied
+configmap/argocd-notifications-cm serverside-applied
+configmap/argocd-rbac-cm serverside-applied
+configmap/argocd-ssh-known-hosts-cm serverside-applied
+configmap/argocd-tls-certs-cm serverside-applied
+secret/argocd-notifications-secret serverside-applied
+secret/argocd-secret serverside-applied
+service/argocd-application-controller serverside-applied
+service/argocd-applicationset-controller serverside-applied
+service/argocd-dex-server serverside-applied
+service/argocd-metrics serverside-applied
+service/argocd-notifications-controller-metrics serverside-applied
+service/argocd-redis serverside-applied
+service/argocd-repo-server serverside-applied
+service/argocd-server serverside-applied
+service/argocd-server-metrics serverside-applied
+deployment.apps/argocd-applicationset-controller serverside-applied
+deployment.apps/argocd-dex-server serverside-applied
+deployment.apps/argocd-notifications-controller serverside-applied
+deployment.apps/argocd-redis serverside-applied
+deployment.apps/argocd-repo-server serverside-applied
+deployment.apps/argocd-server serverside-applied
+statefulset.apps/argocd-application-controller serverside-applied
+networkpolicy.networking.k8s.io/argocd-application-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-applicationset-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-dex-server-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-notifications-controller-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-redis-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-repo-server-network-policy serverside-applied
+networkpolicy.networking.k8s.io/argocd-server-network-policy serverside-applied
+
+[1;33m# Чекаю, поки всі компоненти Argo CD запустяться (2-5 хв)[0m
+
+[1;32m$ kubectl -n argocd rollout status statefulset/argocd-application-controller --timeout=600s[0m
+partitioned roll out complete: 1 new pods have been updated...
+
+[1;32m$ kubectl -n argocd wait --for=condition=available deployment --all --timeout=600s[0m
+deployment.apps/argocd-applicationset-controller condition met
+deployment.apps/argocd-dex-server condition met
+deployment.apps/argocd-notifications-controller condition met
+deployment.apps/argocd-redis condition met
+deployment.apps/argocd-repo-server condition met
+deployment.apps/argocd-server condition met
+
+[1;32m$ kubectl -n argocd get pods[0m
+NAME                                                READY   STATUS    RESTARTS   AGE
+argocd-application-controller-0                     1/1     Running   0          4m25s
+argocd-applicationset-controller-794bb95c9d-jzqcw   1/1     Running   0          4m26s
+argocd-dex-server-66cf64bfcf-6qhwj                  1/1     Running   0          4m26s
+argocd-notifications-controller-5878c8d644-7n7pf    1/1     Running   0          4m26s
+argocd-redis-5869b7547-bc565                        1/1     Running   0          4m26s
+argocd-repo-server-7d55cc466b-5nrlj                 1/1     Running   0          4m26s
+argocd-server-85b849c688-kz2tk                      1/1     Running   0          4m25s
+
+[1;32m$ argocd version --client --short[0m
+argocd: v3.6.1
+[screenshot 03a-argocd-pods.png]
+
+[1;32m$ argocd login localhost:8080 --username admin --password *** --insecure[0m
+'admin:login' logged in successfully
+Context 'localhost:8080' updated
+
+[1;33m# Зміна пароля admin: початковий пароль скрипт підставить сам, введи лише новий (мінімум 8 символів)[0m
+Новий пароль admin: 
+Ще раз: 
+
+[1;32m$ argocd account update-password --current-password *** --new-password ***[0m
+Password updated
+Context 'localhost:8080' updated
+
+[1;32m$ kubectl -n argocd delete secret argocd-initial-admin-secret[0m
+secret "argocd-initial-admin-secret" deleted from argocd namespace
+
+[1;32m$ argocd account get-user-info[0m
+Logged In: true
+Username: admin
+Issuer: argocd
+Groups: 
+[screenshot 03b-argocd-login.png]
+
+[1;33m>>> Браузер: увійди як admin з новим паролем (попередження про сертифікат: Advanced -> Proceed). Коли на екрані потрібний стан (Enter - далі)[0m
+[screenshot 03c-argocd-ui.png]

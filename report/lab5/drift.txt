@@ -1,0 +1,48 @@
+
+[1;36m==================== п.6a  Дрейф без selfHeal ====================[0m
+
+[1;32m$ grep -n selfHeal argocd-apps/task-manager.yaml[0m
+24:      selfHeal: false              # ЛР-5 п.6a: спершу false (дрейф лишається), потім true
+
+[1;32m$ kubectl -n task-manager scale deployment task-manager-tasks-service --replicas=5[0m
+deployment.apps/task-manager-tasks-service scaled
+
+[1;32m$ argocd app get task-manager[0m
+Name:               argocd/task-manager
+Project:            default
+Server:             https://kubernetes.default.svc
+Namespace:          task-manager
+URL:                https://localhost:8080/applications/task-manager
+Source:
+- Repo:             https://github.com/aanastasiaakk/devops-labs.git
+  Target:           main
+  Path:             charts/task-manager
+  Helm Values:      values-minikube.yaml
+SyncWindow:         Sync Allowed
+Sync Policy:        Automated (Prune)
+Sync Status:        OutOfSync from main (efe6dfb)
+Health Status:      Healthy
+
+GROUP  KIND                   NAMESPACE     NAME                        STATUS     HEALTH   HOOK  MESSAGE
+       ConfigMap              task-manager  task-manager-config         Synced                    configmap/task-manager-config configured
+       PersistentVolumeClaim  task-manager  task-manager-postgres-data  Synced     Healthy        persistentvolumeclaim/task-manager-postgres-data configured
+       Service                task-manager  task-manager-tasks-service  Synced     Healthy        service/task-manager-tasks-service configured
+       Service                task-manager  task-manager-postgres       Synced     Healthy        service/task-manager-postgres configured
+       Service                task-manager  task-manager-stats-service  Synced     Healthy        service/task-manager-stats-service configured
+       Service                task-manager  task-manager-frontend       Synced     Healthy        service/task-manager-frontend configured
+       Service                task-manager  task-manager-redis          Synced     Healthy        service/task-manager-redis configured
+apps   Deployment             task-manager  task-manager-redis          Synced     Healthy        deployment.apps/task-manager-redis configured
+apps   Deployment             task-manager  task-manager-tasks-service  OutOfSync  Healthy        deployment.apps/task-manager-tasks-service configured
+apps   Deployment             task-manager  task-manager-stats-service  Synced     Healthy        deployment.apps/task-manager-stats-service configured
+apps   Deployment             task-manager  task-manager-frontend       Synced     Healthy        deployment.apps/task-manager-frontend configured
+apps   Deployment             task-manager  task-manager-postgres       Synced     Healthy        deployment.apps/task-manager-postgres configured
+
+[1;32m$ kubectl -n task-manager get deployment task-manager-tasks-service[0m
+NAME                         READY   UP-TO-DATE   AVAILABLE   AGE
+task-manager-tasks-service   5/5     5            5           4m55s
+
+[1;33m# OutOfSync, але реплік лишається 5: без selfHeal Argo CD лише показує розбіжність[0m
+[screenshot 06a-drift.png]
+
+[1;33m>>> Браузер: OutOfSync на Deployment tasks-service (кнопка DIFF показує replicas 5 проти 2). Коли на екрані потрібний стан (Enter - далі)[0m
+[screenshot 06a-ui-outofsync.png]

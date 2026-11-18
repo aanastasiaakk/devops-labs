@@ -1,0 +1,120 @@
+
+[1;36m==================== п.6b  Неіснуючий тег: Synced, але Degraded ====================[0m
+
+[1;32m$ git pull --ff-only[0m
+Already up to date.
+
+[1;32m$ git diff[0m
+diff --git a/charts/task-manager/values-minikube.yaml b/charts/task-manager/values-minikube.yaml
+index dba0108..fcb73ff 100644
+--- a/charts/task-manager/values-minikube.yaml
++++ b/charts/task-manager/values-minikube.yaml
+@@ -5,7 +5,7 @@
+ # Версія застосунку = тег образів tasks-service, stats-service і frontend у GHCR.
+ # Реліз нової версії: змінити тег тут -> commit -> push, Argo CD сам перерозгорне застосунок.
+ image:
+-  tag: "1.2.0"
++  tag: "9.9.9"
+   pullPolicy: IfNotPresent
+ 
+ # Пароль БД не зберігається в Git. Secret створюється вручну один раз:
+
+[1;32m$ git add charts/task-manager/values-minikube.yaml[0m
+
+[1;32m$ git commit -m Release task-manager 9.9.9 (тег не існує)[0m
+[main b1f831a] Release task-manager 9.9.9 (тег не існує)
+ Committer: Anastasia Klyvchuk <aanastasiaakk@MacBook-Pro-Anastasia.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+[1;32m$ git push[0m
+remote: Bypassed rule violations for refs/heads/main:        
+remote: 
+remote: - Changes must be made through a pull request.        
+remote: 
+remote: - 9 of 9 required status checks are expected.        
+remote: 
+To https://github.com/aanastasiaakk/devops-labs.git
+   4e17492..b1f831a  main -> main
+
+[1;33m# Маніфест у кластері = маніфест у Git (Synced), але нові поди не можуть завантажити образ[0m
+Чекаю на стан Synced / Progressing (коміт b1f831a) .
+[1;32mOK: Synced / Progressing, коміт b1f831a[0m
+
+[1;32m$ kubectl -n task-manager get pods[0m
+NAME                                          READY   STATUS         RESTARTS   AGE
+task-manager-frontend-547b675dc-hw9v5         1/1     Running        0          3m11s
+task-manager-frontend-6ff9d4fbdf-rs48q        0/1     ErrImagePull   0          4s
+task-manager-postgres-56d96d4d6c-m76ct        0/1     Running        0          4s
+task-manager-redis-5bd6c7b6dc-wgj6q           0/1     Running        0          4s
+task-manager-redis-fc76497b9-vm2xx            1/1     Running        0          3m11s
+task-manager-stats-service-54cc7bc65f-ltfjx   0/1     ErrImagePull   0          4s
+task-manager-stats-service-7bb884f4bf-77l9g   1/1     Running        0          3m11s
+task-manager-tasks-service-565767bd8f-7sl69   1/1     Running        0          2m36s
+task-manager-tasks-service-565767bd8f-kqc79   1/1     Running        0          3m11s
+task-manager-tasks-service-6fdc7d7455-bqgb7   0/1     Init:0/1       0          4s
+
+[1;33m# Через progressDeadlineSeconds (90 с) Deployment позначається як невдалий -> Degraded[0m
+Чекаю на стан Synced / Degraded (коміт b1f831a) ..................
+[1;32mOK: Synced / Degraded, коміт b1f831a[0m
+
+[1;32m$ argocd app get task-manager[0m
+Name:               argocd/task-manager
+Project:            default
+Server:             https://kubernetes.default.svc
+Namespace:          task-manager
+URL:                https://localhost:8080/applications/task-manager
+Source:
+- Repo:             https://github.com/aanastasiaakk/devops-labs.git
+  Target:           main
+  Path:             charts/task-manager
+  Helm Values:      values-minikube.yaml
+SyncWindow:         Sync Allowed
+Sync Policy:        Automated (Prune)
+Sync Status:        Synced to main (b1f831a)
+Health Status:      Degraded
+
+GROUP  KIND                   NAMESPACE     NAME                        STATUS  HEALTH    HOOK  MESSAGE
+       ConfigMap              task-manager  task-manager-config         Synced                  configmap/task-manager-config configured
+       PersistentVolumeClaim  task-manager  task-manager-postgres-data  Synced  Healthy         persistentvolumeclaim/task-manager-postgres-data configured
+       Service                task-manager  task-manager-frontend       Synced  Healthy         service/task-manager-frontend configured
+       Service                task-manager  task-manager-redis          Synced  Healthy         service/task-manager-redis configured
+       Service                task-manager  task-manager-tasks-service  Synced  Healthy         service/task-manager-tasks-service configured
+       Service                task-manager  task-manager-postgres       Synced  Healthy         service/task-manager-postgres configured
+       Service                task-manager  task-manager-stats-service  Synced  Healthy         service/task-manager-stats-service configured
+apps   Deployment             task-manager  task-manager-frontend       Synced  Degraded        deployment.apps/task-manager-frontend configured
+apps   Deployment             task-manager  task-manager-postgres       Synced  Healthy         deployment.apps/task-manager-postgres configured
+apps   Deployment             task-manager  task-manager-redis          Synced  Healthy         deployment.apps/task-manager-redis configured
+apps   Deployment             task-manager  task-manager-tasks-service  Synced  Degraded        deployment.apps/task-manager-tasks-service configured
+apps   Deployment             task-manager  task-manager-stats-service  Synced  Degraded        deployment.apps/task-manager-stats-service configured
+
+[1;32m$ kubectl -n task-manager get pods[0m
+NAME                                          READY   STATUS             RESTARTS   AGE
+task-manager-frontend-547b675dc-hw9v5         1/1     Running            0          4m43s
+task-manager-frontend-6ff9d4fbdf-rs48q        0/1     ImagePullBackOff   0          96s
+task-manager-postgres-56d96d4d6c-m76ct        1/1     Running            0          96s
+task-manager-redis-5bd6c7b6dc-wgj6q           1/1     Running            0          96s
+task-manager-stats-service-54cc7bc65f-ltfjx   0/1     ImagePullBackOff   0          96s
+task-manager-stats-service-7bb884f4bf-77l9g   1/1     Running            0          4m43s
+task-manager-tasks-service-565767bd8f-7sl69   1/1     Running            0          4m8s
+task-manager-tasks-service-565767bd8f-kqc79   1/1     Running            0          4m43s
+task-manager-tasks-service-6fdc7d7455-bqgb7   0/1     ImagePullBackOff   0          96s
+
+[1;32m$ curl localhost:8081/api/version[0m
+{"status":"ok","service":"tasks-service","version":"1.2.0","pod":"task-manager-tasks-service-565767bd8f-7sl69"}
+
+[1;33m# Старі поди продовжують відповідати (maxUnavailable: 0), користувачі не постраждали[0m
+[screenshot 06b-degraded.png]
+
+[1;33m>>> Браузер: Synced + Degraded, поди ImagePullBackOff. Коли на екрані потрібний стан (Enter - далі)[0m
+[screenshot 06b-ui-degraded.png]

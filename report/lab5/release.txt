@@ -1,0 +1,105 @@
+
+[1;36m==================== п.5  Реліз 1.2.0 через Git ====================[0m
+
+[1;32m$ git pull --ff-only[0m
+Already up to date.
+
+[1;33m# Зараз розгорнуто 1.1.0:[0m
+
+[1;32m$ curl localhost:8081/api/version[0m
+{"status":"ok","service":"tasks-service","version":"1.1.0","pod":"task-manager-tasks-service-6b899f98cb-j952t"}
+
+[1;32m$ git diff[0m
+diff --git a/charts/task-manager/values-minikube.yaml b/charts/task-manager/values-minikube.yaml
+index 4d6ce87..dba0108 100644
+--- a/charts/task-manager/values-minikube.yaml
++++ b/charts/task-manager/values-minikube.yaml
+@@ -5,7 +5,7 @@
+ # Версія застосунку = тег образів tasks-service, stats-service і frontend у GHCR.
+ # Реліз нової версії: змінити тег тут -> commit -> push, Argo CD сам перерозгорне застосунок.
+ image:
+-  tag: "1.1.0"
++  tag: "1.2.0"
+   pullPolicy: IfNotPresent
+ 
+ # Пароль БД не зберігається в Git. Secret створюється вручну один раз:
+
+[1;32m$ git add charts/task-manager/values-minikube.yaml[0m
+
+[1;32m$ git commit -m Release task-manager 1.2.0[0m
+[main efe6dfb] Release task-manager 1.2.0
+ Committer: Anastasia Klyvchuk <aanastasiaakk@MacBook-Pro-Anastasia.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+[1;32m$ git push[0m
+remote: Bypassed rule violations for refs/heads/main:        
+remote: 
+remote: - Changes must be made through a pull request.        
+remote: 
+remote: - 9 of 9 required status checks are expected.        
+remote: 
+To https://github.com/aanastasiaakk/devops-labs.git
+   3f4c2f2..efe6dfb  main -> main
+
+[1;33m# Argo CD побачив новий коміт: OutOfSync -> автосинхронізація -> нові поди[0m
+
+[1;32m$ argocd app get task-manager[0m
+Name:               argocd/task-manager
+Project:            default
+Server:             https://kubernetes.default.svc
+Namespace:          task-manager
+URL:                https://localhost:8080/applications/task-manager
+Source:
+- Repo:             https://github.com/aanastasiaakk/devops-labs.git
+  Target:           main
+  Path:             charts/task-manager
+  Helm Values:      values-minikube.yaml
+SyncWindow:         Sync Allowed
+Sync Policy:        Automated (Prune)
+Sync Status:        OutOfSync from main (efe6dfb)
+Health Status:      Healthy
+
+GROUP  KIND                   NAMESPACE     NAME                        STATUS     HEALTH   HOOK  MESSAGE
+       ConfigMap              task-manager  task-manager-config         OutOfSync                 
+       PersistentVolumeClaim  task-manager  task-manager-postgres-data  OutOfSync  Healthy        
+       Service                task-manager  task-manager-frontend       OutOfSync  Healthy        
+       Service                task-manager  task-manager-postgres       OutOfSync  Healthy        
+       Service                task-manager  task-manager-redis          OutOfSync  Healthy        
+       Service                task-manager  task-manager-stats-service  OutOfSync  Healthy        
+       Service                task-manager  task-manager-tasks-service  OutOfSync  Healthy        
+apps   Deployment             task-manager  task-manager-frontend       OutOfSync  Healthy        
+apps   Deployment             task-manager  task-manager-postgres       OutOfSync  Healthy        
+apps   Deployment             task-manager  task-manager-redis          OutOfSync  Healthy        
+apps   Deployment             task-manager  task-manager-stats-service  OutOfSync  Healthy        
+apps   Deployment             task-manager  task-manager-tasks-service  OutOfSync  Healthy        
+Чекаю на стан Synced / Healthy (коміт efe6dfb) .........
+[1;32mOK: Synced / Healthy, коміт efe6dfb[0m
+
+[1;32m$ kubectl -n task-manager rollout status deployment/task-manager-tasks-service --timeout=180s[0m
+deployment "task-manager-tasks-service" successfully rolled out
+
+[1;32m$ kubectl -n task-manager get pods -o custom-columns=POD:.metadata.name,IMAGE:.spec.containers[0].image,STATUS:.status.phase[0m
+POD                                           IMAGE                                                   STATUS
+task-manager-frontend-547b675dc-hw9v5         ghcr.io/aanastasiaakk/devops-labs/frontend:1.2.0        Running
+task-manager-postgres-5548d9b74f-9pgwh        postgres:16-alpine                                      Running
+task-manager-redis-fc76497b9-vm2xx            redis:7-alpine                                          Running
+task-manager-stats-service-7bb884f4bf-77l9g   ghcr.io/aanastasiaakk/devops-labs/stats-service:1.2.0   Running
+task-manager-tasks-service-565767bd8f-7sl69   ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.2.0   Running
+task-manager-tasks-service-565767bd8f-kqc79   ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.2.0   Running
+task-manager-tasks-service-6b899f98cb-j952t   ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.1.0   Running
+task-manager-tasks-service-6b899f98cb-xf7np   ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.1.0   Running
+
+[1;32m$ curl localhost:8081/api/version[0m
+{"status":"ok","service":"tasks-service","version":"1.2.0","pod":"task-manager-tasks-service-565767bd8f-kqc79"}
+[screenshot 05-release.png]

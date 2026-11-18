@@ -1,0 +1,97 @@
+
+[1;36m==================== п.6a  selfHeal: true комітом ====================[0m
+
+[1;32m$ git pull --ff-only[0m
+Already up to date.
+
+[1;32m$ git diff[0m
+diff --git a/argocd-apps/task-manager.yaml b/argocd-apps/task-manager.yaml
+index 3453839..7b9ada5 100644
+--- a/argocd-apps/task-manager.yaml
++++ b/argocd-apps/task-manager.yaml
+@@ -21,6 +21,6 @@ spec:
+   syncPolicy:
+     automated:                     # автоматична синхронізація після кожного нового коміту
+       prune: true                  # об'єкт зник із Git -> Argo CD видаляє його з кластера
+-      selfHeal: false              # ЛР-5 п.6a: спершу false (дрейф лишається), потім true
++      selfHeal: true               # ЛР-5 п.6a: ручні зміни в кластері Argo CD повертає до стану з Git
+     syncOptions:
+       - CreateNamespace=true       # створити namespace task-manager, якщо його ще немає
+
+[1;32m$ git add argocd-apps/task-manager.yaml[0m
+
+[1;32m$ git commit -m Enable selfHeal for task-manager[0m
+[main 4e17492] Enable selfHeal for task-manager
+ Committer: Anastasia Klyvchuk <aanastasiaakk@MacBook-Pro-Anastasia.local>
+Your name and email address were configured automatically based
+on your username and hostname. Please check that they are accurate.
+You can suppress this message by setting them explicitly:
+
+    git config --global user.name "Your Name"
+    git config --global user.email you@example.com
+
+After doing this, you may fix the identity used for this commit with:
+
+    git commit --amend --reset-author
+
+ 1 file changed, 1 insertion(+), 1 deletion(-)
+
+[1;32m$ git push[0m
+remote: Bypassed rule violations for refs/heads/main:        
+remote: 
+remote: - Changes must be made through a pull request.        
+remote: 
+remote: - 9 of 9 required status checks are expected.        
+remote: 
+To https://github.com/aanastasiaakk/devops-labs.git
+   efe6dfb..4e17492  main -> main
+
+[1;33m# root застосовує зміну Application сам; Argo CD одразу повертає 2 репліки замість 5[0m
+Чекаю на стан Synced / Healthy .
+[1;32mOK: Synced / Healthy, коміт 4e17492[0m
+
+[1;32m$ kubectl -n task-manager get deployment task-manager-tasks-service[0m
+NAME                         READY   UP-TO-DATE   AVAILABLE   AGE
+task-manager-tasks-service   2/2     2            2           5m15s
+
+[1;33m# Ще раз змінюю кластер вручну:[0m
+
+[1;32m$ kubectl -n task-manager scale deployment task-manager-tasks-service --replicas=5[0m
+deployment.apps/task-manager-tasks-service scaled
+task-manager-tasks-service   2/2   2     2     5m18s
+task-manager-tasks-service   2/2   2     2     5m21s
+task-manager-tasks-service   2/2   2     2     5m24s
+task-manager-tasks-service   2/2   2     2     5m27s
+task-manager-tasks-service   2/2   2     2     5m30s
+task-manager-tasks-service   2/2   2     2     5m33s
+
+[1;32m$ argocd app get task-manager[0m
+Name:               argocd/task-manager
+Project:            default
+Server:             https://kubernetes.default.svc
+Namespace:          task-manager
+URL:                https://localhost:8080/applications/task-manager
+Source:
+- Repo:             https://github.com/aanastasiaakk/devops-labs.git
+  Target:           main
+  Path:             charts/task-manager
+  Helm Values:      values-minikube.yaml
+SyncWindow:         Sync Allowed
+Sync Policy:        Automated (Prune)
+Sync Status:        Synced to main (4e17492)
+Health Status:      Healthy
+
+GROUP  KIND                   NAMESPACE     NAME                        STATUS  HEALTH   HOOK  MESSAGE
+apps   Deployment             task-manager  task-manager-tasks-service  Synced  Healthy        deployment.apps/task-manager-tasks-service configured
+       ConfigMap              task-manager  task-manager-config         Synced                 
+       PersistentVolumeClaim  task-manager  task-manager-postgres-data  Synced  Healthy        
+       Service                task-manager  task-manager-frontend       Synced  Healthy        
+       Service                task-manager  task-manager-postgres       Synced  Healthy        
+       Service                task-manager  task-manager-redis          Synced  Healthy        
+       Service                task-manager  task-manager-stats-service  Synced  Healthy        
+       Service                task-manager  task-manager-tasks-service  Synced  Healthy        
+apps   Deployment             task-manager  task-manager-frontend       Synced  Healthy        
+apps   Deployment             task-manager  task-manager-postgres       Synced  Healthy        
+apps   Deployment             task-manager  task-manager-redis          Synced  Healthy        
+apps   Deployment             task-manager  task-manager-stats-service  Synced  Healthy        
+[screenshot 06a-selfheal.png]

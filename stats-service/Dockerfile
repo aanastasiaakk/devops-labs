@@ -13,7 +13,11 @@ RUN apt-get update \
     && pip install --no-cache-dir --upgrade pip setuptools wheel
 
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# Після встановлення залежностей pip у працюючому контейнері не потрібен - видаляємо його.
+# Менше зайвих компонентів в образі; заодно зникає pip/_vendor/vendor.txt, через який
+# Trivy знаходив вбудовану в pip стару setuptools 70.3.0 (CVE-2025-47273).
+RUN pip install --no-cache-dir -r requirements.txt \
+    && python -m pip uninstall -y pip
 
 COPY app ./app
 COPY tests ./tests

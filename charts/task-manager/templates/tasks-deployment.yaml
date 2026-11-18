@@ -10,6 +10,8 @@ metadata:
     {{- include "task-manager.componentLabels" $c | nindent 4 }}
 spec:
   replicas: {{ $v.replicaCount }}
+  # Скільки чекати на успішне розгортання, перш ніж позначити Deployment як невдалий (Argo CD: Degraded)
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
   strategy:
     type: RollingUpdate
     rollingUpdate:

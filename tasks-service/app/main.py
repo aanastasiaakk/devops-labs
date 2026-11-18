@@ -66,6 +66,12 @@ def health():
     return {"status": "ok", "service": "tasks-service", "version": APP_VERSION, "pod": POD_NAME}
 
 
+@app.get("/version")
+def version():
+    # ЛР-5: окремий ендпоінт версії - видно, яка версія застосунку зараз розгорнута в кластері
+    return {"service": "tasks-service", "version": APP_VERSION, "pod": POD_NAME}
+
+
 @app.get("/ready")
 def ready(db: Session = Depends(get_db)):
     # readiness-проба: под готовий приймати трафік, лише якщо є з'єднання з базою

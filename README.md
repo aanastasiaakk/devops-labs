@@ -225,12 +225,12 @@ minikube tunnel
 
 # Лабораторна робота №4 — Пакування застосунку в Helm-чарт
 
-Маніфести з `k8s/` (лаба №3) переписано у власний Helm-чарт `chart/task-manager/`. Чарт розгортає той самий застосунок і той самий набір об'єктів, але всі змінні параметри винесено у значення, тож один чарт обслуговує кілька середовищ.
+Маніфести з `k8s/` (лаба №3) переписано у власний Helm-чарт `charts/task-manager/`. Чарт розгортає той самий застосунок і той самий набір об'єктів, але всі змінні параметри винесено у значення, тож один чарт обслуговує кілька середовищ.
 
 ## Структура чарта
 
 ```
-chart/task-manager/
+charts/task-manager/
 ├── Chart.yaml              # ім'я, опис, version, appVersion
 ├── values.yaml             # значення за замовчуванням (= dev)
 ├── values-dev.yaml         # середовище розробки
@@ -324,7 +324,7 @@ chart/task-manager/
 Значення зливаються по ключах: файл `-f` замінює лише ті ключі, які в ньому є, решта береться з `values.yaml`.
 
 ```bash
-helm template task-manager chart/task-manager -f chart/task-manager/values-prod.yaml \
+helm template task-manager charts/task-manager -f charts/task-manager/values-prod.yaml \
   --set tasksService.replicaCount=5 --show-only templates/tasks-deployment.yaml | grep replicas
 #   replicas: 5     (values.yaml: 1, values-prod.yaml: 3, --set: 5)
 ```
@@ -335,16 +335,16 @@ helm template task-manager chart/task-manager -f chart/task-manager/values-prod.
 
 ```bash
 # dev
-helm install task-manager ./chart/task-manager -n lab4 --create-namespace \
-  -f chart/task-manager/values-dev.yaml
+helm install task-manager ./charts/task-manager -n lab4 --create-namespace \
+  -f charts/task-manager/values-dev.yaml
 
 # prod (Ingress, 3 репліки tasks-service, стабільна версія 1.0.0)
-helm install task-manager ./chart/task-manager -n lab4-prod --create-namespace \
-  -f chart/task-manager/values-prod.yaml
+helm install task-manager ./charts/task-manager -n lab4-prod --create-namespace \
+  -f charts/task-manager/values-prod.yaml
 
 # Те саме з власним паролем бази (пароль лише в командному рядку, не у файлі)
-helm install task-manager ./chart/task-manager -n lab4-prod --create-namespace \
-  -f chart/task-manager/values-prod.yaml --set postgresql.password="$DB_PASSWORD"
+helm install task-manager ./charts/task-manager -n lab4-prod --create-namespace \
+  -f charts/task-manager/values-prod.yaml --set postgresql.password="$DB_PASSWORD"
 ```
 
 Після встановлення Helm виводить `NOTES.txt` з командою, як відкрити застосунок:
@@ -354,12 +354,12 @@ helm install task-manager ./chart/task-manager -n lab4-prod --create-namespace \
 ## Основні команди
 
 ```bash
-helm lint chart/task-manager -f chart/task-manager/values-prod.yaml      # перевірка чарта
-helm template task-manager chart/task-manager -f chart/task-manager/values-dev.yaml   # маніфести без встановлення
+helm lint charts/task-manager -f charts/task-manager/values-prod.yaml      # перевірка чарта
+helm template task-manager charts/task-manager -f charts/task-manager/values-dev.yaml   # маніфести без встановлення
 helm list -n lab4                                  # релізи
 helm status task-manager -n lab4                   # статус
 helm get values task-manager -n lab4 [--all]       # значення релізу
-helm upgrade task-manager chart/task-manager -n lab4 -f chart/task-manager/values-dev.yaml --set image.tag=1.0.0
+helm upgrade task-manager charts/task-manager -n lab4 -f charts/task-manager/values-dev.yaml --set image.tag=1.0.0
 helm history task-manager -n lab4                  # ревізії
 helm rollback task-manager 1 -n lab4               # відкат до ревізії 1
 helm test task-manager -n lab4                     # тест релізу
@@ -380,3 +380,54 @@ kubectl -n lab4 get secrets -l owner=helm          # де Helm зберігає 
 ```
 
 Вивід кожного етапу зберігається в `report/lab4/`.
+
+---
+
+# Лабораторна робота №5 — GitOps: розгортання через Argo CD
+
+Розгортання переведено з ручного `helm upgrade --install` на GitOps: бажаний стан кластера описаний у Git,
+а Argo CD у кластері сам приводить кластер до нього. Обрано варіант **b**: конфігурація лежить у цьому ж
+репозиторії (`aanastasiaakk/devops-labs`, публічний, тож `argocd repo add` не потрібен).
+
+## Структура
+
+```
+bootstrap/root.yaml           # кореневий Application (App of Apps), застосовується вручну ОДИН раз
+argocd-apps/task-manager.yaml # Application для чарту, ним керує root
+charts/task-manager/          # чарт з ЛР-4 (перенесено з chart/)
+  values-minikube.yaml        # значення для minikube: тег образів, репліки, existingSecret
+scripts/lab5-demo.sh          # демонстрація всіх пунктів по етапах, вивід у report/lab5/
+```
+
+- **CI** (`.github/workflows/ci.yml`): `on.push.paths-ignore` для `bootstrap/`, `argocd-apps/`, `charts/` —
+  зміна тегу в Git не запускає збірку образів. Push тегу `v*` збирає образи завжди (на теги фільтр шляхів не діє).
+- **Секрети**: у `values-minikube.yaml` задано `existingSecret: task-manager-db`, тож шаблон Secret не рендериться,
+  а Deployment-и беруть пароль із Secret, створеного вручну (`./scripts/lab5-demo.sh secret`). Пароля в Git немає,
+  і Argo CD не видаляє цей Secret навіть з `prune`, бо він не з Git.
+- **Хуки ЛР-4**: `pre-upgrade` Argo CD перетворює на `PreSync` і запускав би перед кожною синхронізацією, зокрема першою,
+  коли бази ще немає; хук `test` Argo CD не підтримує. Для minikube обидва вимкнено у values.
+- **progressDeadlineSeconds: 90** — Deployment з неіснуючим образом за 90 с стає невдалим, і Argo CD показує `Degraded`.
+
+## Версія застосунку
+
+- `GET /version` у tasks-service (з 1.2.0) і поле `version` у `/health` (усі версії).
+- Через фронтенд: `curl localhost:8081/api/version`; з 1.2.0 версія видна на сторінці зеленою міткою біля заголовка.
+- Версію в образ вшиває CI з git-тегу (`--build-arg APP_VERSION`): тег `v1.2.0` → образи `ghcr.io/aanastasiaakk/devops-labs/*:1.2.0`.
+
+## Порядок виконання
+
+```bash
+./scripts/lab5-demo.sh check       # helm lint/template з values-minikube.yaml
+./scripts/lab5-demo.sh argocd      # minikube, Argo CD у namespace argocd, CLI, новий пароль admin
+./scripts/lab5-demo.sh secret      # Secret з паролем БД
+./scripts/lab5-demo.sh bootstrap   # kubectl apply -f bootstrap/root.yaml -> Synced / Healthy
+./scripts/lab5-demo.sh release     # tag 1.1.0 -> 1.2.0: commit + push, Argo CD перерозгортає сам
+./scripts/lab5-demo.sh drift       # kubectl scale без selfHeal -> OutOfSync, 5 реплік лишаються
+./scripts/lab5-demo.sh selfheal    # selfHeal: true комітом -> kubectl scale повертається до 2
+./scripts/lab5-demo.sh degraded    # tag 9.9.9 -> Synced + Degraded (ImagePullBackOff)
+./scripts/lab5-demo.sh revert      # git revert -> Healthy; git log і argocd app history
+./scripts/lab5-demo.sh ui          # port-forward: Argo CD на 8080, застосунок на 8081
+```
+
+Відкат робиться комітом (`git revert`), а не `argocd app rollback`: з увімкненою автосинхронізацією Argo CD
+одразу повернув би стан із Git.

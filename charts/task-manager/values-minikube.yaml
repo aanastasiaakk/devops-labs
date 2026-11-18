@@ -1,0 +1,41 @@
+# Значення для локального кластера minikube під керуванням Argo CD (ЛР-5).
+# Цей файл - єдине джерело правди: щоб змінити кластер, змінюємо файл, робимо commit і push.
+# Шлях у Application (valueFiles) вказується відносно каталогу чарту.
+
+# Версія застосунку = тег образів tasks-service, stats-service і frontend у GHCR.
+# Реліз нової версії: змінити тег тут -> commit -> push, Argo CD сам перерозгорне застосунок.
+image:
+  tag: "1.1.0"
+  pullPolicy: IfNotPresent
+
+# Пароль БД не зберігається в Git. Secret створюється вручну один раз:
+#   ./scripts/lab5-demo.sh secret
+existingSecret: task-manager-db
+
+tasksService:
+  replicaCount: 2
+
+statsService:
+  replicaCount: 1
+
+frontend:
+  replicaCount: 1
+
+config:
+  cacheTTL: 5
+
+ingress:
+  enabled: false
+
+# Неіснуючий тег має швидко перевести Deployment у стан "невдалий" (Argo CD: Degraded), а не за 10 хв
+progressDeadlineSeconds: 90
+
+# Helm-хук pre-upgrade в Argo CD перетворюється на PreSync і запускався б перед КОЖНОЮ синхронізацією,
+# зокрема першою, коли бази ще немає. Тому для GitOps його вимкнено.
+hooks:
+  preUpgradeCheck:
+    enabled: false
+
+# Под для `helm test` Argo CD не запускає (тестові хуки не підтримуються), тож не рендеримо його.
+tests:
+  enabled: false

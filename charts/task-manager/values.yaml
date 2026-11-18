@@ -1,6 +1,13 @@
 nameOverride: ""
 fullnameOverride: ""
 
+# Ім'я Secret, створеного вручну (kubectl create secret). Якщо задано, чарт не створює власний Secret.
+# Ключі: POSTGRES_PASSWORD, DATABASE_URL. Використовується в GitOps (ЛР-5), щоб не тримати пароль у Git.
+existingSecret: ""
+
+# Через скільки секунд без прогресу Deployment вважається невдалим (стандарт Kubernetes: 600)
+progressDeadlineSeconds: 600
+
 image:
   tag: "1.1.0"
   pullPolicy: IfNotPresent
@@ -109,6 +116,7 @@ hooks:
     enabled: true
 
 tests:
+  enabled: true
   image:
     repository: curlimages/curl
     tag: "8.11.1"

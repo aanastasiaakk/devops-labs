@@ -1,0 +1,359 @@
+--- report/lab4/rendered-dev.yaml	2026-11-18 16:42:10
++++ report/lab4/rendered-prod.yaml	2026-11-18 16:42:10
+@@ -9,7 +9,7 @@
+     helm.sh/chart: task-manager-0.1.0
+     app.kubernetes.io/name: task-manager
+     app.kubernetes.io/instance: task-manager
+-    app.kubernetes.io/version: "1.1.0"
++    app.kubernetes.io/version: "1.0.0"
+     app.kubernetes.io/managed-by: Helm
+     app.kubernetes.io/part-of: task-manager
+ type: Opaque
+@@ -27,7 +27,7 @@
+     helm.sh/chart: task-manager-0.1.0
+     app.kubernetes.io/name: task-manager
+     app.kubernetes.io/instance: task-manager
+-    app.kubernetes.io/version: "1.1.0"
++    app.kubernetes.io/version: "1.0.0"
+     app.kubernetes.io/managed-by: Helm
+     app.kubernetes.io/part-of: task-manager
+ data:
+@@ -35,7 +35,7 @@
+   POSTGRES_USER: "app"
+   TASKS_URL: "http://task-manager-tasks-service:8000"
+   REDIS_URL: "redis://task-manager-redis:6379/0"
+-  CACHE_TTL: "5"
++  CACHE_TTL: "30"
+   default.conf: |
+     server {
+         listen 80;
+@@ -68,7 +68,7 @@
+     helm.sh/chart: task-manager-0.1.0
+     app.kubernetes.io/name: task-manager
+     app.kubernetes.io/instance: task-manager
+-    app.kubernetes.io/version: "1.1.0"
++    app.kubernetes.io/version: "1.0.0"
+     app.kubernetes.io/managed-by: Helm
+     app.kubernetes.io/part-of: task-manager
+     app.kubernetes.io/component: postgres
+@@ -89,7 +89,7 @@
+     helm.sh/chart: task-manager-0.1.0
+     app.kubernetes.io/name: task-manager
+     app.kubernetes.io/instance: task-manager
+-    app.kubernetes.io/version: "1.1.0"
++    app.kubernetes.io/version: "1.0.0"
+     app.kubernetes.io/managed-by: Helm
+     app.kubernetes.io/part-of: task-manager
+     app.kubernetes.io/component: frontend
+@@ -114,7 +114,7 @@
+     helm.sh/chart: task-manager-0.1.0
+     app.kubernetes.io/name: task-manager
+     app.kubernetes.io/instance: task-manager
+-    app.kubernetes.io/version: "1.1.0"
++    app.kubernetes.io/version: "1.0.0"
+     app.kubernetes.io/managed-by: Helm
+     app.kubernetes.io/part-of: task-manager
+     app.kubernetes.io/component: postgres
+@@ -138,7 +138,7 @@
+     helm.sh/chart: task-manager-0.1.0
+     app.kubernetes.io/name: task-manager
+     app.kubernetes.io/instance: task-manager
+-    app.kubernetes.io/version: "1.1.0"
++    app.kubernetes.io/version: "1.0.0"
+     app.kubernetes.io/managed-by: Helm
+     app.kubernetes.io/part-of: task-manager
+     app.kubernetes.io/component: redis
+@@ -162,7 +162,7 @@
+     helm.sh/chart: task-manager-0.1.0
+     app.kubernetes.io/name: task-manager
+     app.kubernetes.io/instance: task-manager
+-    app.kubernetes.io/version: "1.1.0"
++    app.kubernetes.io/version: "1.0.0"
+     app.kubernetes.io/managed-by: Helm
+     app.kubernetes.io/part-of: task-manager
+     app.kubernetes.io/component: stats-service
+@@ -186,7 +186,7 @@
+     helm.sh/chart: task-manager-0.1.0
+     app.kubernetes.io/name: task-manager
+     app.kubernetes.io/instance: task-manager
+-    app.kubernetes.io/version: "1.1.0"
++    app.kubernetes.io/version: "1.0.0"
+     app.kubernetes.io/managed-by: Helm
+     app.kubernetes.io/part-of: task-manager
+     app.kubernetes.io/component: tasks-service
+@@ -210,12 +210,12 @@
+     helm.sh/chart: task-manager-0.1.0
+     app.kubernetes.io/name: task-manager
+     app.kubernetes.io/instance: task-manager
+-    app.kubernetes.io/version: "1.1.0"
++    app.kubernetes.io/version: "1.0.0"
+     app.kubernetes.io/managed-by: Helm
+     app.kubernetes.io/part-of: task-manager
+     app.kubernetes.io/component: frontend
+ spec:
+-  replicas: 1
++  replicas: 2
+   strategy:
+     type: RollingUpdate
+     rollingUpdate:
+@@ -232,17 +232,17 @@
+         helm.sh/chart: task-manager-0.1.0
+         app.kubernetes.io/name: task-manager
+         app.kubernetes.io/instance: task-manager
+-        app.kubernetes.io/version: "1.1.0"
++        app.kubernetes.io/version: "1.0.0"
+         app.kubernetes.io/managed-by: Helm
+         app.kubernetes.io/part-of: task-manager
+         app.kubernetes.io/component: frontend
+       annotations:
+-        checksum/config: 1f1534fc31072a6780f74f2eb15653977c865b6c08b0764613ceaf937607526c
++        checksum/config: 7e8f772c5a9a03bfea4910017830460003c35cca7a254042f32feae5f654416b
+     spec:
+       terminationGracePeriodSeconds: 30
+       containers:
+         - name: frontend
+-          image: ghcr.io/aanastasiaakk/devops-labs/frontend:1.1.0
++          image: ghcr.io/aanastasiaakk/devops-labs/frontend:1.0.0
+           imagePullPolicy: IfNotPresent
+           ports:
+             - containerPort: 80
+@@ -256,10 +256,10 @@
+                 command: ["sleep", "10"]
+           resources:
+             limits:
+-              cpu: 100m
++              cpu: 200m
+               memory: 64Mi
+             requests:
+-              cpu: 25m
++              cpu: 50m
+               memory: 32Mi
+           readinessProbe:
+             httpGet:
+@@ -291,7 +291,7 @@
+     helm.sh/chart: task-manager-0.1.0
+     app.kubernetes.io/name: task-manager
+     app.kubernetes.io/instance: task-manager
+-    app.kubernetes.io/version: "1.1.0"
++    app.kubernetes.io/version: "1.0.0"
+     app.kubernetes.io/managed-by: Helm
+     app.kubernetes.io/part-of: task-manager
+     app.kubernetes.io/component: postgres
+@@ -310,7 +310,7 @@
+         helm.sh/chart: task-manager-0.1.0
+         app.kubernetes.io/name: task-manager
+         app.kubernetes.io/instance: task-manager
+-        app.kubernetes.io/version: "1.1.0"
++        app.kubernetes.io/version: "1.0.0"
+         app.kubernetes.io/managed-by: Helm
+         app.kubernetes.io/part-of: task-manager
+         app.kubernetes.io/component: postgres
+@@ -344,11 +344,11 @@
+               mountPath: /var/lib/postgresql/data
+           resources:
+             limits:
+-              cpu: 250m
+-              memory: 256Mi
++              cpu: 500m
++              memory: 512Mi
+             requests:
+-              cpu: 50m
+-              memory: 128Mi
++              cpu: 100m
++              memory: 256Mi
+           readinessProbe:
+             exec:
+               command: ["sh", "-c", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+@@ -374,7 +374,7 @@
+     helm.sh/chart: task-manager-0.1.0
+     app.kubernetes.io/name: task-manager
+     app.kubernetes.io/instance: task-manager
+-    app.kubernetes.io/version: "1.1.0"
++    app.kubernetes.io/version: "1.0.0"
+     app.kubernetes.io/managed-by: Helm
+     app.kubernetes.io/part-of: task-manager
+     app.kubernetes.io/component: redis
+@@ -391,7 +391,7 @@
+         helm.sh/chart: task-manager-0.1.0
+         app.kubernetes.io/name: task-manager
+         app.kubernetes.io/instance: task-manager
+-        app.kubernetes.io/version: "1.1.0"
++        app.kubernetes.io/version: "1.0.0"
+         app.kubernetes.io/managed-by: Helm
+         app.kubernetes.io/part-of: task-manager
+         app.kubernetes.io/component: redis
+@@ -404,11 +404,11 @@
+             - containerPort: 6379
+           resources:
+             limits:
+-              cpu: 100m
+-              memory: 64Mi
++              cpu: 200m
++              memory: 128Mi
+             requests:
+-              cpu: 25m
+-              memory: 32Mi
++              cpu: 50m
++              memory: 64Mi
+           readinessProbe:
+             exec:
+               command: ["redis-cli", "ping"]
+@@ -430,12 +430,12 @@
+     helm.sh/chart: task-manager-0.1.0
+     app.kubernetes.io/name: task-manager
+     app.kubernetes.io/instance: task-manager
+-    app.kubernetes.io/version: "1.1.0"
++    app.kubernetes.io/version: "1.0.0"
+     app.kubernetes.io/managed-by: Helm
+     app.kubernetes.io/part-of: task-manager
+     app.kubernetes.io/component: stats-service
+ spec:
+-  replicas: 1
++  replicas: 2
+   strategy:
+     type: RollingUpdate
+     rollingUpdate:
+@@ -452,17 +452,17 @@
+         helm.sh/chart: task-manager-0.1.0
+         app.kubernetes.io/name: task-manager
+         app.kubernetes.io/instance: task-manager
+-        app.kubernetes.io/version: "1.1.0"
++        app.kubernetes.io/version: "1.0.0"
+         app.kubernetes.io/managed-by: Helm
+         app.kubernetes.io/part-of: task-manager
+         app.kubernetes.io/component: stats-service
+       annotations:
+-        checksum/config: 1f1534fc31072a6780f74f2eb15653977c865b6c08b0764613ceaf937607526c
++        checksum/config: 7e8f772c5a9a03bfea4910017830460003c35cca7a254042f32feae5f654416b
+     spec:
+       terminationGracePeriodSeconds: 30
+       containers:
+         - name: stats-service
+-          image: ghcr.io/aanastasiaakk/devops-labs/stats-service:1.1.0
++          image: ghcr.io/aanastasiaakk/devops-labs/stats-service:1.0.0
+           imagePullPolicy: IfNotPresent
+           ports:
+             - containerPort: 8001
+@@ -488,11 +488,11 @@
+                 command: ["sleep", "10"]
+           resources:
+             limits:
+-              cpu: 150m
+-              memory: 128Mi
++              cpu: 300m
++              memory: 192Mi
+             requests:
+-              cpu: 25m
+-              memory: 64Mi
++              cpu: 50m
++              memory: 96Mi
+           readinessProbe:
+             httpGet:
+               path: /health
+@@ -516,12 +516,12 @@
+     helm.sh/chart: task-manager-0.1.0
+     app.kubernetes.io/name: task-manager
+     app.kubernetes.io/instance: task-manager
+-    app.kubernetes.io/version: "1.1.0"
++    app.kubernetes.io/version: "1.0.0"
+     app.kubernetes.io/managed-by: Helm
+     app.kubernetes.io/part-of: task-manager
+     app.kubernetes.io/component: tasks-service
+ spec:
+-  replicas: 1
++  replicas: 3
+   strategy:
+     type: RollingUpdate
+     rollingUpdate:
+@@ -538,12 +538,12 @@
+         helm.sh/chart: task-manager-0.1.0
+         app.kubernetes.io/name: task-manager
+         app.kubernetes.io/instance: task-manager
+-        app.kubernetes.io/version: "1.1.0"
++        app.kubernetes.io/version: "1.0.0"
+         app.kubernetes.io/managed-by: Helm
+         app.kubernetes.io/part-of: task-manager
+         app.kubernetes.io/component: tasks-service
+       annotations:
+-        checksum/config: 1f1534fc31072a6780f74f2eb15653977c865b6c08b0764613ceaf937607526c
++        checksum/config: 7e8f772c5a9a03bfea4910017830460003c35cca7a254042f32feae5f654416b
+     spec:
+       terminationGracePeriodSeconds: 30
+       initContainers:
+@@ -560,7 +560,7 @@
+               memory: 64Mi
+       containers:
+         - name: tasks-service
+-          image: ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.1.0
++          image: ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.0.0
+           imagePullPolicy: IfNotPresent
+           ports:
+             - containerPort: 8000
+@@ -576,11 +576,11 @@
+                 command: ["sleep", "10"]
+           resources:
+             limits:
+-              cpu: 250m
+-              memory: 192Mi
++              cpu: 500m
++              memory: 256Mi
+             requests:
+-              cpu: 50m
+-              memory: 96Mi
++              cpu: 100m
++              memory: 128Mi
+           readinessProbe:
+             httpGet:
+               path: /ready
+@@ -594,6 +594,33 @@
+             initialDelaySeconds: 30
+             periodSeconds: 10
+ ---
++# Source: task-manager/templates/ingress.yaml
++apiVersion: networking.k8s.io/v1
++kind: Ingress
++metadata:
++  name: task-manager
++  namespace: lab4
++  labels:
++    helm.sh/chart: task-manager-0.1.0
++    app.kubernetes.io/name: task-manager
++    app.kubernetes.io/instance: task-manager
++    app.kubernetes.io/version: "1.0.0"
++    app.kubernetes.io/managed-by: Helm
++    app.kubernetes.io/part-of: task-manager
++spec:
++  ingressClassName: nginx
++  rules:
++    -
++      http:
++        paths:
++          - path: /
++            pathType: Prefix
++            backend:
++              service:
++                name: task-manager-frontend
++                port:
++                  number: 80
++---
+ # Source: task-manager/templates/tests/test-app.yaml
+ apiVersion: v1
+ kind: Pod
+@@ -604,7 +631,7 @@
+     helm.sh/chart: task-manager-0.1.0
+     app.kubernetes.io/name: task-manager
+     app.kubernetes.io/instance: task-manager
+-    app.kubernetes.io/version: "1.1.0"
++    app.kubernetes.io/version: "1.0.0"
+     app.kubernetes.io/managed-by: Helm
+     app.kubernetes.io/part-of: task-manager
+     app.kubernetes.io/component: test
+@@ -646,7 +673,7 @@
+     helm.sh/chart: task-manager-0.1.0
+     app.kubernetes.io/name: task-manager
+     app.kubernetes.io/instance: task-manager
+-    app.kubernetes.io/version: "1.1.0"
++    app.kubernetes.io/version: "1.0.0"
+     app.kubernetes.io/managed-by: Helm
+     app.kubernetes.io/part-of: task-manager
+     app.kubernetes.io/component: pre-upgrade-check

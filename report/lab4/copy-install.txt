@@ -1,0 +1,21 @@
+NAME: demo-copy
+LAST DEPLOYED: Wed Nov 18 16:42:55 2026
+NAMESPACE: lab4
+STATUS: deployed
+REVISION: 1
+NOTES:
+Task Manager встановлено.
+  Реліз:     demo-copy (ревізія 1)
+  Namespace: lab4
+  Версія:    1.1.0
+
+1. Дочекатися, поки всі поди стануть Running:
+     kubectl -n lab4 get pods -l app.kubernetes.io/instance=demo-copy -w
+
+2. Відкрити застосунок:
+     Ingress вимкнено. Прокинути порт frontend на свій комп'ютер:
+       kubectl -n lab4 port-forward svc/demo-copy-task-manager-frontend 8080:80
+     і відкрити в браузері http://localhost:8080/
+
+3. Перевірити реліз тестом:
+     helm test demo-copy -n lab4

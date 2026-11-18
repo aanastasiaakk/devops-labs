@@ -1,0 +1,36 @@
+{{- $c := dict "ctx" $ "component" "redis" }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "task-manager.componentName" $c }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "task-manager.componentLabels" $c | nindent 4 }}
+spec:
+  replicas: {{ .Values.redis.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "task-manager.componentSelectorLabels" $c | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "task-manager.componentLabels" $c | nindent 8 }}
+    spec:
+      containers:
+        - name: redis
+          image: {{ printf "%s:%s" .Values.redis.image.repository (toString .Values.redis.image.tag) }}
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 6379
+          resources:
+            {{- toYaml .Values.redis.resources | nindent 12 }}
+          readinessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            exec:
+              command: ["redis-cli", "ping"]
+            initialDelaySeconds: 10
+            periodSeconds: 10

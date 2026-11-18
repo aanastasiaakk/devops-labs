@@ -1,0 +1,827 @@
+Розгорни термінал на весь екран (у PyCharm: Cmd + Shift + ') і натисни Enter
+[3J[H[2J[1;36m==================== 1a-1b. Helm 3 і кластер minikube ====================[0m
+
+[1;32m$ helm version[0m
+version.BuildInfo{Version:"v3.22.1", GitCommit:"d6c1a0e4027caa6abc7892e7ea9f0cda7447baa3", GitTreeState:"clean", GoVersion:"go1.27.2"}
+
+[1;32m$ minikube status[0m
+minikube
+type: Control Plane
+host: Running
+kubelet: Running
+apiserver: Running
+kubeconfig: Configured
+
+
+[1;32m$ kubectl get nodes[0m
+NAME       STATUS   ROLES           AGE   VERSION
+minikube   Ready    control-plane   27d   v1.37.0
+
+[1;32m$ minikube addons list   (ingress, metrics-server)[0m
+  ingress          enabled
+  metrics-server   enabled
+
+[screenshot 01-helm-minikube.png]
+[3J[H[2J[1;36m==================== 1c. Маніфести лабораторної №3 розгортаються і застосунок працює ====================[0m
+
+[1;32m$ kubectl apply -f k8s/[0m
+namespace/task-manager unchanged
+configmap/app-config unchanged
+secret/app-secret configured
+persistentvolumeclaim/postgres-data unchanged
+deployment.apps/postgres unchanged
+service/postgres unchanged
+deployment.apps/redis unchanged
+service/redis unchanged
+deployment.apps/tasks-service unchanged
+service/tasks-service unchanged
+deployment.apps/stats-service unchanged
+service/stats-service unchanged
+deployment.apps/frontend unchanged
+service/frontend unchanged
+ingress.networking.k8s.io/task-manager unchanged
+
+[1;32m$ kubectl -n task-manager get pods[0m
+NAME                             READY   STATUS    RESTARTS   AGE
+frontend-6bf58d6b78-8xkmp        1/1     Running   0          17s
+frontend-6bf58d6b78-rd779        1/1     Running   0          17s
+postgres-658b776795-kqnv5        1/1     Running   0          17s
+redis-5d86499dd5-7mnnq           1/1     Running   0          17s
+stats-service-7fd6b744b-6tpnj    1/1     Running   0          17s
+stats-service-7fd6b744b-8ngjk    1/1     Running   0          17s
+tasks-service-864cdf84b5-rns22   1/1     Running   0          17s
+tasks-service-864cdf84b5-z6bht   1/1     Running   0          17s
+
+[1;32m$ curl http://localhost:8090/api/version[0m
+{"status":"ok","service":"tasks-service","version":"1.0.0","pod":"tasks-service-864cdf84b5-z6bht"}
+
+[screenshot 02-lab3-deploy.png]
+[3J[H[2J[1;36m==================== 1d. Видалення розгортання лабораторної №3 ====================[0m
+
+[1;32m$ kubectl delete -f k8s/ --wait=true[0m
+namespace "task-manager" deleted
+configmap "app-config" deleted from task-manager namespace
+secret "app-secret" deleted from task-manager namespace
+persistentvolumeclaim "postgres-data" deleted from task-manager namespace
+deployment.apps "postgres" deleted from task-manager namespace
+service "postgres" deleted from task-manager namespace
+deployment.apps "redis" deleted from task-manager namespace
+service "redis" deleted from task-manager namespace
+deployment.apps "tasks-service" deleted from task-manager namespace
+service "tasks-service" deleted from task-manager namespace
+deployment.apps "stats-service" deleted from task-manager namespace
+service "stats-service" deleted from task-manager namespace
+deployment.apps "frontend" deleted from task-manager namespace
+service "frontend" deleted from task-manager namespace
+ingress.networking.k8s.io "task-manager" deleted from task-manager namespace
+
+[1;32m$ kubectl get namespaces[0m
+NAME              STATUS   AGE
+default           Active   27d
+ingress-nginx     Active   27d
+kube-node-lease   Active   27d
+kube-public       Active   27d
+kube-system       Active   27d
+lab4              Active   11m
+
+[screenshot 03-lab3-delete.png]
+[3J[H[2J[1;36m==================== 2. Структура чарта і Chart.yaml ====================[0m
+
+[1;32m$ find chart/task-manager -type f | sort[0m
+chart/task-manager/.helmignore
+chart/task-manager/Chart.yaml
+chart/task-manager/templates/NOTES.txt
+chart/task-manager/templates/_helpers.tpl
+chart/task-manager/templates/configmap.yaml
+chart/task-manager/templates/frontend-deployment.yaml
+chart/task-manager/templates/frontend-service.yaml
+chart/task-manager/templates/hooks/pre-upgrade-db-check.yaml
+chart/task-manager/templates/ingress.yaml
+chart/task-manager/templates/postgres-deployment.yaml
+chart/task-manager/templates/postgres-pvc.yaml
+chart/task-manager/templates/postgres-service.yaml
+chart/task-manager/templates/redis-deployment.yaml
+chart/task-manager/templates/redis-service.yaml
+chart/task-manager/templates/secret.yaml
+chart/task-manager/templates/stats-deployment.yaml
+chart/task-manager/templates/stats-service.yaml
+chart/task-manager/templates/tasks-deployment.yaml
+chart/task-manager/templates/tasks-service.yaml
+chart/task-manager/templates/tests/test-app.yaml
+chart/task-manager/values-dev.yaml
+chart/task-manager/values-prod.yaml
+chart/task-manager/values.yaml
+
+[1;32m$ cat chart/task-manager/Chart.yaml[0m
+apiVersion: v2
+name: task-manager
+description: >-
+  Task Manager з лабораторної №3 у вигляді Helm-чарта: tasks-service (REST API задач),
+  stats-service (статистика з кешем), frontend (nginx), PostgreSQL і Redis.
+type: application
+
+version: 0.1.0
+
+appVersion: "1.1.0"
+
+keywords:
+  - task-manager
+  - fastapi
+  - postgresql
+  - redis
+home: https://github.com/aanastasiaakk/devops-labs
+sources:
+  - https://github.com/aanastasiaakk/devops-labs
+maintainers:
+  - name: aanastasiaakk
+
+[screenshot 04-chart-structure.png]
+[3J[H[2J[1;36m==================== 3. Шаблони: імена з імені релізу, Secret зі значень ====================[0m
+
+[1;36m# 3a. Маніфести лаби №3 -> окремі файли templates/[0m
+
+[1;32m$ ls -C k8s/ chart/task-manager/templates/[0m
+chart/task-manager/templates/:
+NOTES.txt			postgres-service.yaml
+_helpers.tpl			redis-deployment.yaml
+configmap.yaml			redis-service.yaml
+frontend-deployment.yaml	secret.yaml
+frontend-service.yaml		stats-deployment.yaml
+hooks				stats-service.yaml
+ingress.yaml			tasks-deployment.yaml
+postgres-deployment.yaml	tasks-service.yaml
+postgres-pvc.yaml		tests
+
+k8s/:
+00-namespace.yaml		30-tasks-deployment.yaml
+01-configmap.yaml		31-tasks-service.yaml
+02-secret.yaml			40-stats-deployment.yaml
+10-postgres-pvc.yaml		41-stats-service.yaml
+11-postgres-deployment.yaml	50-frontend-deployment.yaml
+12-postgres-service.yaml	51-frontend-service.yaml
+20-redis-deployment.yaml	60-ingress.yaml
+21-redis-service.yaml
+
+[1;36m# 3c. Ім'я об'єкта залежить від імені релізу[0m
+
+[1;32m$ helm template task-manager chart/task-manager --show-only templates/tasks-service.yaml | grep '^  name:'[0m
+  name: task-manager-tasks-service
+
+[1;32m$ helm template demo-copy chart/task-manager --show-only templates/tasks-service.yaml | grep '^  name:'[0m
+  name: demo-copy-task-manager-tasks-service
+
+[1;36m# 3d. Секрет бере значення з .Values (порожній пароль -> lookup / randAlphaNum)[0m
+
+[1;32m$ grep -nE 'Values|lookup|randAlphaNum' chart/task-manager/templates/secret.yaml[0m
+2:{{- $password := .Values.postgresql.password }}
+4:{{- $existing := lookup "v1" "Secret" .Release.Namespace $secretName }}
+8:{{- $password = randAlphaNum 24 }}
+22:  DATABASE_URL: {{ printf "postgresql://%s:%s@%s:%v/%s" .Values.postgresql.username $password $pgHost .Values.postgresql.service.port .Values.postgresql.database | quote }}
+
+[screenshot 05-templates.png]
+[3J[H[2J[1;36m==================== 4. values.yaml: параметри працюють, прапорці enabled ====================[0m
+
+[1;36m# 4a. За замовчуванням і після --set[0m
+
+[1;32m$ helm template ... --show-only templates/tasks-deployment.yaml | grep -E 'replicas:|image: ghcr'[0m
+  replicas: 1
+          image: ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.1.0
+
+[1;32m$ helm template ... --set tasksService.replicaCount=4 --set image.tag=1.0.0 | grep -E 'replicas:|image: ghcr'[0m
+  replicas: 4
+          image: ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.0.0
+
+[1;32m$ helm template ... --show-only templates/frontend-service.yaml --set frontend.service.type=NodePort --set frontend.service.port=8080[0m
+  type: NodePort
+    - name: http
+      port: 8080
+
+[1;32m$ helm template ... --show-only templates/tasks-deployment.yaml --set tasksService.resources.limits.memory=512Mi[0m
+              cpu: 250m
+              memory: 512Mi
+            requests:
+
+[1;32m$ helm template ... --show-only templates/configmap.yaml --set config.cacheTTL=60 | grep CACHE_TTL[0m
+  CACHE_TTL: "60"
+
+[1;36m# 4c. Прапорці enabled[0m
+  persistence.enabled=true  -> PVC:     1
+  persistence.enabled=false -> PVC:     0
+  ingress.enabled=false     -> Ingress: 0
+  ingress.enabled=true      -> Ingress: 1
+
+[screenshot 06-values.png]
+[3J[H[2J[1;36m==================== 5. _helpers.tpl і include у всіх шаблонах ====================[0m
+
+[1;32m$ grep -n 'define' chart/task-manager/templates/_helpers.tpl[0m
+1:{{- define "task-manager.name" -}}
+5:{{- define "task-manager.fullname" -}}
+18:{{- define "task-manager.componentName" -}}
+22:{{- define "task-manager.configName" -}}
+26:{{- define "task-manager.secretName" -}}
+30:{{- define "task-manager.chart" -}}
+34:{{- define "task-manager.selectorLabels" -}}
+39:{{- define "task-manager.labels" -}}
+47:{{- define "task-manager.componentSelectorLabels" -}}
+52:{{- define "task-manager.componentLabels" -}}
+57:{{- define "task-manager.image" -}}
+62:{{- define "task-manager.postgresImage" -}}
+
+[1;32m$ grep -c 'include "task-manager' chart/task-manager/templates/*.yaml chart/task-manager/templates/*/*.yaml[0m
+chart/task-manager/templates/configmap.yaml:5
+chart/task-manager/templates/frontend-deployment.yaml:6
+chart/task-manager/templates/frontend-service.yaml:3
+chart/task-manager/templates/ingress.yaml:3
+chart/task-manager/templates/postgres-deployment.yaml:9
+chart/task-manager/templates/postgres-pvc.yaml:2
+chart/task-manager/templates/postgres-service.yaml:3
+chart/task-manager/templates/redis-deployment.yaml:4
+chart/task-manager/templates/redis-service.yaml:3
+chart/task-manager/templates/secret.yaml:3
+chart/task-manager/templates/stats-deployment.yaml:8
+chart/task-manager/templates/stats-service.yaml:3
+chart/task-manager/templates/tasks-deployment.yaml:8
+chart/task-manager/templates/tasks-service.yaml:3
+chart/task-manager/templates/hooks/pre-upgrade-db-check.yaml:8
+chart/task-manager/templates/tests/test-app.yaml:3
+
+[screenshot 07-helpers.png]
+[3J[H[2J[1;36m==================== 6a. values-dev.yaml і values-prod.yaml (лише відмінні рядки) ====================[0m
+
+[1;32m$ diff -y -W 140 --suppress-common-lines chart/task-manager/values-dev.yaml chart/task-manager/values-prod.yaml[0m
+  tag: "1.1.0"							     |	  tag: "1.0.0"
+  replicaCount: 1						     |	  replicaCount: 3
+    requests: { cpu: 50m, memory: 96Mi }			     |	    requests: { cpu: 100m, memory: 128Mi }
+    limits:   { cpu: 250m, memory: 192Mi }			     |	    limits:   { cpu: 500m, memory: 256Mi }
+  replicaCount: 1						     |	  replicaCount: 2
+    requests: { cpu: 25m, memory: 64Mi }			     |	    requests: { cpu: 50m, memory: 96Mi }
+    limits:   { cpu: 150m, memory: 128Mi }			     |	    limits:   { cpu: 300m, memory: 192Mi }
+  replicaCount: 1						     |	  replicaCount: 2
+    requests: { cpu: 25m, memory: 32Mi }			     |	    requests: { cpu: 50m, memory: 32Mi }
+    limits:   { cpu: 100m, memory: 64Mi }			     |	    limits:   { cpu: 200m, memory: 64Mi }
+								     >	postgresql:
+								     >	  resources:
+								     >	    requests: { cpu: 100m, memory: 256Mi }
+								     >	    limits:   { cpu: 500m, memory: 512Mi }
+								     >	
+								     >	redis:
+								     >	  resources:
+								     >	    requests: { cpu: 50m, memory: 64Mi }
+								     >	    limits:   { cpu: 200m, memory: 128Mi }
+								     >	
+  cacheTTL: 5							     |	  cacheTTL: 30
+  enabled: false						     |	  enabled: true
+								     >	  className: nginx
+								     >	  host: ""
+
+[screenshot 08-env-files.png]
+[3J[H[2J[1;36m==================== 6b. Різниця середовищ без встановлення: helm template ====================[0m
+
+[1;32m$ helm template task-manager chart/task-manager -f values-dev.yaml  > rendered-dev.yaml[0m
+
+[1;32m$ helm template task-manager chart/task-manager -f values-prod.yaml > rendered-prod.yaml[0m
+
+[dev]
+  Deployment/task-manager-frontend: replicas=1
+  task-manager-frontend: ghcr.io/aanastasiaakk/devops-labs/frontend:1.1.0
+  Deployment/task-manager-postgres: replicas=1
+  Deployment/task-manager-redis: replicas=1
+  Deployment/task-manager-stats-service: replicas=1
+  task-manager-stats-service: ghcr.io/aanastasiaakk/devops-labs/stats-service:1.1.0
+  Deployment/task-manager-tasks-service: replicas=1
+  task-manager-tasks-service: ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.1.0
+  CACHE_TTL="5"   Ingress: 0
+
+[prod]
+  Deployment/task-manager-frontend: replicas=2
+  task-manager-frontend: ghcr.io/aanastasiaakk/devops-labs/frontend:1.0.0
+  Deployment/task-manager-postgres: replicas=1
+  Deployment/task-manager-redis: replicas=1
+  Deployment/task-manager-stats-service: replicas=2
+  task-manager-stats-service: ghcr.io/aanastasiaakk/devops-labs/stats-service:1.0.0
+  Deployment/task-manager-tasks-service: replicas=3
+  task-manager-tasks-service: ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.0.0
+  CACHE_TTL="30"   Ingress: 1
+
+[screenshot 09-env-summary.png]
+[3J[H[2J[1;36m==================== 6b. diff rendered-dev.yaml rendered-prod.yaml (змінені рядки) ====================[0m
+
+[1;32m$ diff -u rendered-dev.yaml rendered-prod.yaml | grep '^[-+] ' | grep -v version[0m
+-  CACHE_TTL: "5"
++  CACHE_TTL: "30"
+-  replicas: 1
++  replicas: 2
+-          image: ghcr.io/aanastasiaakk/devops-labs/frontend:1.1.0
++          image: ghcr.io/aanastasiaakk/devops-labs/frontend:1.0.0
+-              cpu: 100m
++              cpu: 200m
+-              cpu: 25m
++              cpu: 50m
+-              cpu: 250m
+-              memory: 256Mi
++              cpu: 500m
++              memory: 512Mi
+-              cpu: 50m
+-              memory: 128Mi
++              cpu: 100m
++              memory: 256Mi
+-              cpu: 100m
+-              memory: 64Mi
++              cpu: 200m
++              memory: 128Mi
+-              cpu: 25m
+-              memory: 32Mi
++              cpu: 50m
++              memory: 64Mi
+-  replicas: 1
++  replicas: 2
+-          image: ghcr.io/aanastasiaakk/devops-labs/stats-service:1.1.0
++          image: ghcr.io/aanastasiaakk/devops-labs/stats-service:1.0.0
+-              cpu: 150m
+-              memory: 128Mi
++              cpu: 300m
++              memory: 192Mi
+-              cpu: 25m
+-              memory: 64Mi
++              cpu: 50m
++              memory: 96Mi
+-  replicas: 1
++  replicas: 3
+-          image: ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.1.0
++          image: ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.0.0
+-              cpu: 250m
+-              memory: 192Mi
++              cpu: 500m
++              memory: 256Mi
+
+[1;36m# Повний diff: report/lab4/06b-full.diff[0m
+
+[screenshot 10-env-diff.png]
+[3J[H[2J[1;36m==================== 6c. Пріоритет значень: values.yaml < -f < --set ====================[0m
+
+[1;36m# 1) лише values.yaml[0m
+
+[1;32m$ helm template ... [0m
+    replicas: 1
+    image: ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.1.0
+
+[1;36m# 2) -f values-prod.yaml перекриває values.yaml[0m
+
+[1;32m$ helm template ... -f chart/task-manager/values-prod.yaml[0m
+    replicas: 3
+    image: ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.0.0
+
+[1;36m# 3) --set перекриває і values.yaml, і -f[0m
+
+[1;32m$ helm template ... -f chart/task-manager/values-prod.yaml --set tasksService.replicaCount=5 --set image.tag=1.1.0[0m
+    replicas: 5
+    image: ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.1.0
+
+[1;36m# 4) кілька -f: перемагає пізніший[0m
+
+[1;32m$ helm template ... -f chart/task-manager/values-prod.yaml -f chart/task-manager/values-dev.yaml[0m
+    replicas: 1
+    image: ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.1.0
+
+[screenshot 11-priority.png]
+[3J[H[2J[1;36m==================== 7a. Перевірка чарта на помилки: helm lint ====================[0m
+
+[1;32m$ helm lint chart/task-manager --strict[0m
+==> Linting chart/task-manager
+[INFO] Chart.yaml: icon is recommended
+
+1 chart(s) linted, 0 chart(s) failed
+
+[1;32m$ helm lint chart/task-manager -f chart/task-manager/values-dev.yaml --strict[0m
+==> Linting chart/task-manager
+[INFO] Chart.yaml: icon is recommended
+
+1 chart(s) linted, 0 chart(s) failed
+
+[1;32m$ helm lint chart/task-manager -f chart/task-manager/values-prod.yaml --strict[0m
+==> Linting chart/task-manager
+[INFO] Chart.yaml: icon is recommended
+
+1 chart(s) linted, 0 chart(s) failed
+
+[screenshot 12-lint.png]
+[3J[H[2J[1;36m==================== 7b. Порівняння з маніфестами лабораторної №3 ====================[0m
+
+[1;36m# Типи об'єктів[0m
+  kind                     лаба №3 чарт(prod)
+  ConfigMap                       1        1
+  Deployment                      5        5
+  Ingress                         1        1
+  Namespace                       1        0
+  PersistentVolumeClaim           1        1
+  Secret                          1        1
+  Service                         5        5
+
+[1;36m# Namespace створює helm install --create-namespace, тому в чарті його немає[0m
+
+[1;36m# Імена: лаба №3  |  реліз task-manager  |  реліз demo-copy[0m
+  ConfigMap              app-config      | task-manager-config          | demo-copy-task-manager-config
+  Deployment             frontend        | task-manager-frontend        | demo-copy-task-manager-frontend
+  Deployment             postgres        | task-manager-postgres        | demo-copy-task-manager-postgres
+  Deployment             redis           | task-manager-redis           | demo-copy-task-manager-redis
+  Deployment             stats-service   | task-manager-stats-service   | demo-copy-task-manager-stats-service
+  Deployment             tasks-service   | task-manager-tasks-service   | demo-copy-task-manager-tasks-service
+  Ingress                task-manager    | task-manager                 | demo-copy-task-manager
+  PersistentVolumeClaim  postgres-data   | task-manager-postgres-data   | demo-copy-task-manager-postgres-data
+  Secret                 app-secret      | task-manager-secret          | demo-copy-task-manager-secret
+  Service                frontend        | task-manager-frontend        | demo-copy-task-manager-frontend
+  Service                postgres        | task-manager-postgres        | demo-copy-task-manager-postgres
+  Service                redis           | task-manager-redis           | demo-copy-task-manager-redis
+  Service                stats-service   | task-manager-stats-service   | demo-copy-task-manager-stats-service
+  Service                tasks-service   | task-manager-tasks-service   | demo-copy-task-manager-tasks-service
+
+[1;36m# Жорстко прописані теги, репліки, імена в шаблонах:[0m
+  не знайдено
+
+[screenshot 13-compare-lab3.png]
+[3J[H[2J[1;36m==================== 7c. Встановлення релізу у власний namespace однією командою ====================[0m
+
+[1;32m$ helm install task-manager chart/task-manager -n lab4 --create-namespace -f chart/task-manager/values-dev.yaml --wait --timeout 5m[0m
+NAME: task-manager
+LAST DEPLOYED: Wed Nov 18 16:42:21 2026
+NAMESPACE: lab4
+STATUS: deployed
+REVISION: 1
+NOTES:
+Task Manager встановлено.
+  Реліз:     task-manager (ревізія 1)
+  Namespace: lab4
+  Версія:    1.1.0
+
+1. Дочекатися, поки всі поди стануть Running:
+     kubectl -n lab4 get pods -l app.kubernetes.io/instance=task-manager -w
+
+2. Відкрити застосунок:
+     Ingress вимкнено. Прокинути порт frontend на свій комп'ютер:
+       kubectl -n lab4 port-forward svc/task-manager-frontend 8080:80
+     і відкрити в браузері http://localhost:8080/
+
+3. Перевірити реліз тестом:
+     helm test task-manager -n lab4
+
+[screenshot 14-install.png]
+[3J[H[2J[1;36m==================== 7d. Перелік релізів, статус і значення ====================[0m
+
+[1;32m$ helm list -n lab4[0m
+NAME        	NAMESPACE	REVISION	UPDATED                             	STATUS  	CHART             	APP VERSION
+task-manager	lab4     	1       	2026-11-18 16:42:21.574077 +0200 EET	deployed	task-manager-0.1.0	1.1.0      
+
+[1;32m$ helm status task-manager -n lab4 | head -7[0m
+NAME: task-manager
+LAST DEPLOYED: Wed Nov 18 16:42:21 2026
+NAMESPACE: lab4
+STATUS: deployed
+REVISION: 1
+NOTES:
+Task Manager встановлено.
+
+[1;32m$ helm get values task-manager -n lab4[0m
+USER-SUPPLIED VALUES:
+config:
+  cacheTTL: 5
+frontend:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 100m
+      memory: 64Mi
+    requests:
+      cpu: 25m
+      memory: 32Mi
+image:
+  tag: 1.1.0
+ingress:
+  enabled: false
+statsService:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 150m
+      memory: 128Mi
+    requests:
+      cpu: 25m
+      memory: 64Mi
+tasksService:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 250m
+      memory: 192Mi
+    requests:
+      cpu: 50m
+      memory: 96Mi
+
+[screenshot 15-list-values.png]
+[3J[H[2J[1;36m==================== 7d. Об'єкти релізу в namespace lab4 ====================[0m
+
+[1;32m$ kubectl -n lab4 get pods,deployments,services,pvc,configmaps,secrets[0m
+NAME                                              READY   STATUS    RESTARTS   AGE
+pod/task-manager-frontend-dc4fc667d-jg7dw         1/1     Running   0          21s
+pod/task-manager-postgres-7cbb6694d9-bq6fs        1/1     Running   0          21s
+pod/task-manager-redis-86656494dc-glq2q           1/1     Running   0          21s
+pod/task-manager-stats-service-78fcc8d7c8-pzv6p   1/1     Running   0          21s
+pod/task-manager-tasks-service-64fd4868d-m25qh    1/1     Running   0          21s
+
+NAME                                         READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/task-manager-frontend        1/1     1            1           21s
+deployment.apps/task-manager-postgres        1/1     1            1           21s
+deployment.apps/task-manager-redis           1/1     1            1           21s
+deployment.apps/task-manager-stats-service   1/1     1            1           21s
+deployment.apps/task-manager-tasks-service   1/1     1            1           21s
+
+NAME                                 TYPE        CLUSTER-IP       EXTERNAL-IP   PORT(S)    AGE
+service/task-manager-frontend        ClusterIP   10.101.51.33     <none>        80/TCP     21s
+service/task-manager-postgres        ClusterIP   10.107.199.123   <none>        5432/TCP   21s
+service/task-manager-redis           ClusterIP   10.110.217.255   <none>        6379/TCP   21s
+service/task-manager-stats-service   ClusterIP   10.107.170.174   <none>        8001/TCP   21s
+service/task-manager-tasks-service   ClusterIP   10.110.173.65    <none>        8000/TCP   21s
+
+NAME                                               STATUS   VOLUME                                     CAPACITY   ACCESS MODES   STORAGECLASS   VOLUMEATTRIBUTESCLASS   AGE
+persistentvolumeclaim/task-manager-postgres-data   Bound    pvc-cf2be757-aa1a-4d9f-a3a5-fa1f8ec8962c   1Gi        RWO            standard       <unset>                 21s
+
+NAME                            DATA   AGE
+configmap/kube-root-ca.crt      1      11m
+configmap/task-manager-config   6      21s
+
+NAME                                        TYPE                 DATA   AGE
+secret/sh.helm.release.v1.task-manager.v1   helm.sh/release.v1   1      21s
+secret/task-manager-secret                  Opaque               2      21s
+
+[screenshot 16-objects.png]
+[3J[H[2J[1;36m==================== Застосунок з релізу працює ====================[0m
+
+[1;32m$ curl -X POST http://localhost:8080/api/tasks -d '{"title":"Задача з Helm-релізу"}'[0m
+{"id":1,"title":"Задача з Helm-релізу","done":false}
+
+[1;32m$ curl http://localhost:8080/api/tasks[0m
+[{"id":1,"title":"Задача з Helm-релізу","done":false}]
+
+[1;32m$ curl http://localhost:8080/api/stats[0m
+{"total":1,"done":0,"open":1,"percent_done":0.0,"cached":false}
+
+[1;32m$ curl http://localhost:8080/api/version[0m
+{"status":"ok","service":"tasks-service","version":"1.1.0","pod":"task-manager-tasks-service-64fd4868d-m25qh"}
+
+[screenshot 17-app.png]
+[3J[H[2J[1;36m==================== 9b. Тест релізу: helm test ====================[0m
+
+[1;32m$ helm test task-manager -n lab4[0m
+NAME: task-manager
+LAST DEPLOYED: Wed Nov 18 16:42:21 2026
+NAMESPACE: lab4
+STATUS: deployed
+REVISION: 1
+TEST SUITE:     task-manager-test
+Last Started:   Wed Nov 18 16:42:47 2026
+Last Completed: Wed Nov 18 16:42:50 2026
+Phase:          Succeeded
+NOTES:
+Task Manager встановлено.
+  Реліз:     task-manager (ревізія 1)
+  Namespace: lab4
+  Версія:    1.1.0
+
+1. Дочекатися, поки всі поди стануть Running:
+     kubectl -n lab4 get pods -l app.kubernetes.io/instance=task-manager -w
+
+2. Відкрити застосунок:
+     Ingress вимкнено. Прокинути порт frontend на свій комп'ютер:
+       kubectl -n lab4 port-forward svc/task-manager-frontend 8080:80
+     і відкрити в браузері http://localhost:8080/
+
+3. Перевірити реліз тестом:
+     helm test task-manager -n lab4
+
+[screenshot 18-test.png]
+[3J[H[2J[1;36m==================== 7e. Де Helm зберігає стан релізу ====================[0m
+
+[1;32m$ kubectl -n lab4 get secrets -l owner=helm --show-labels[0m
+NAME                                 TYPE                 DATA   AGE   LABELS
+sh.helm.release.v1.task-manager.v1   helm.sh/release.v1   1      31s   modifiedAt=1795012957,name=task-manager,owner=helm,status=deployed,version=1
+
+[1;32m$ kubectl get secret sh.helm.release.v1.task-manager.v1 -o jsonpath='{.data.release}' | base64 -d | base64 -d | gzip -d[0m
+  name:       task-manager
+  namespace:  lab4
+  revision:   1
+  status:     deployed
+  chart:      task-manager 0.1.0 appVersion 1.1.0
+  config:     {"config": {"cacheTTL": 5}, "frontend": {"replicaCount": 1, "resources": {"limits": {"cpu": "100m", "memory": "64Mi"}, "requests": {"cpu": "25m", "mem ...
+  manifest:
+     # Source: task-manager/templates/secret.yaml
+     # Source: task-manager/templates/configmap.yaml
+     # Source: task-manager/templates/postgres-pvc.yaml
+     # Source: task-manager/templates/frontend-service.yaml
+     # Source: task-manager/templates/postgres-service.yaml
+     # Source: task-manager/templates/redis-service.yaml
+     # Source: task-manager/templates/stats-service.yaml
+     # Source: task-manager/templates/tasks-service.yaml
+     # Source: task-manager/templates/frontend-deployment.yaml
+     # Source: task-manager/templates/postgres-deployment.yaml
+     # Source: task-manager/templates/redis-deployment.yaml
+     # Source: task-manager/templates/stats-deployment.yaml
+     # Source: task-manager/templates/tasks-deployment.yaml
+
+[screenshot 19-storage.png]
+[3J[H[2J[1;36m==================== 3c. Той самий чарт удруге в тому ж namespace ====================[0m
+
+[1;32m$ helm install demo-copy chart/task-manager -n lab4 -f values-dev.yaml   (виконано)[0m
+
+[1;32m$ helm list -n lab4[0m
+NAME        	NAMESPACE	REVISION	UPDATED                             	STATUS  	CHART             	APP VERSION
+demo-copy   	lab4     	1       	2026-11-18 16:42:55.011103 +0200 EET	deployed	task-manager-0.1.0	1.1.0      
+task-manager	lab4     	1       	2026-11-18 16:42:21.574077 +0200 EET	deployed	task-manager-0.1.0	1.1.0      
+
+[1;32m$ kubectl -n lab4 get deployments -L app.kubernetes.io/instance[0m
+NAME                                   READY   UP-TO-DATE   AVAILABLE   AGE   INSTANCE
+demo-copy-task-manager-frontend        1/1     1            1           18s   demo-copy
+demo-copy-task-manager-postgres        1/1     1            1           18s   demo-copy
+demo-copy-task-manager-redis           1/1     1            1           18s   demo-copy
+demo-copy-task-manager-stats-service   1/1     1            1           18s   demo-copy
+demo-copy-task-manager-tasks-service   1/1     1            1           18s   demo-copy
+task-manager-frontend                  1/1     1            1           52s   task-manager
+task-manager-postgres                  1/1     1            1           52s   task-manager
+task-manager-redis                     1/1     1            1           52s   task-manager
+task-manager-stats-service             1/1     1            1           52s   task-manager
+task-manager-tasks-service             1/1     1            1           52s   task-manager
+
+[screenshot 20-two-releases.png]
+[3J[H[2J[1;36m==================== 8a. Оновлення: зміна тега образу через --set (1.1.0 -> 1.0.0) ====================[0m
+
+[1;32m$ helm upgrade task-manager chart/task-manager -n lab4 -f values-dev.yaml --set image.tag=1.0.0 --wait[0m
+Release "task-manager" has been upgraded. Happy Helming!
+NAME: task-manager
+LAST DEPLOYED: Wed Nov 18 16:43:17 2026
+NAMESPACE: lab4
+STATUS: deployed
+REVISION: 2
+
+[1;36m# Логи Job хука pre-upgrade:[0m
+  [pre-upgrade] реліз task-manager: перевірка перед оновленням до ревізії 2
+  task-manager-postgres:5432 - accepting connections
+  [pre-upgrade] задач у базі перед оновленням: 1
+  [pre-upgrade] база доступна, оновлення можна продовжувати
+
+[1;32m$ kubectl -n lab4 get pods -o custom-columns=POD:.metadata.name,IMAGE:.spec.containers[0].image,STATUS:.status.phase[0m
+POD                                           IMAGE                                                   STATUS
+task-manager-frontend-59987d557-v6lrk         ghcr.io/aanastasiaakk/devops-labs/frontend:1.0.0        Running
+task-manager-postgres-779fdd8b8b-ffnh6        postgres:16-alpine                                      Running
+task-manager-redis-656c88b6d4-xvvgh           redis:7-alpine                                          Running
+task-manager-stats-service-d79c58c59-wlf4n    ghcr.io/aanastasiaakk/devops-labs/stats-service:1.0.0   Running
+task-manager-tasks-service-7d9999889c-khlgq   ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.0.0   Running
+
+Версія після оновлення: {"status":"ok","service":"tasks-service","version":"1.0.0","pod":"task-manager-tasks-service-7d9999889c-khlgq"}
+
+[screenshot 21-upgrade-set.png]
+[3J[H[2J[1;36m==================== 8b. Оновлення файлом значень іншого середовища (values-prod.yaml) ====================[0m
+
+[1;32m$ helm upgrade task-manager chart/task-manager -n lab4 -f values-prod.yaml --wait[0m
+Release "task-manager" has been upgraded. Happy Helming!
+NAME: task-manager
+LAST DEPLOYED: Wed Nov 18 16:44:10 2026
+NAMESPACE: lab4
+STATUS: deployed
+REVISION: 3
+
+[1;36m# Логи Job хука pre-upgrade:[0m
+  [pre-upgrade] реліз task-manager: перевірка перед оновленням до ревізії 3
+  task-manager-postgres:5432 - accepting connections
+  [pre-upgrade] задач у базі перед оновленням: 1
+  [pre-upgrade] база доступна, оновлення можна продовжувати
+
+[1;32m$ kubectl -n lab4 get deployments,ingress[0m
+NAME                                         READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/task-manager-frontend        2/2     2            2           2m53s
+deployment.apps/task-manager-postgres        1/1     1            1           2m53s
+deployment.apps/task-manager-redis           1/1     1            1           2m53s
+deployment.apps/task-manager-stats-service   2/2     2            2           2m53s
+deployment.apps/task-manager-tasks-service   3/3     3            3           2m53s
+
+NAME                                     CLASS   HOSTS   ADDRESS        PORTS   AGE
+ingress.networking.k8s.io/task-manager   nginx   *       192.168.49.2   80      61s
+
+Версія: {"status":"ok","service":"tasks-service","version":"1.0.0","pod":"task-manager-tasks-service-65b7bdc687-z4d2g"}
+Задача з dev збереглася (PVC): [{"id":1,"title":"Задача з Helm-релізу","done":false}]
+
+[1;32m$ curl http://localhost:8081/api/version   (через Ingress-контролер)[0m
+{"status":"ok","service":"tasks-service","version":"1.0.0","pod":"task-manager-tasks-service-65b7bdc687-h5bkg"}
+
+[screenshot 22-upgrade-prod.png]
+[3J[H[2J[1;36m==================== 8c. Історія ревізій і що змінювалося ====================[0m
+
+[1;32m$ helm history task-manager -n lab4[0m
+REVISION	UPDATED                 	STATUS    	CHART             	APP VERSION	DESCRIPTION     
+1       	Wed Nov 18 16:42:21 2026	superseded	task-manager-0.1.0	1.1.0      	Install complete
+2       	Wed Nov 18 16:43:17 2026	superseded	task-manager-0.1.0	1.1.0      	Upgrade complete
+3       	Wed Nov 18 16:44:10 2026	deployed  	task-manager-0.1.0	1.1.0      	Upgrade complete
+
+[1;36m# Значення кожної ревізії (helm get values --revision N):[0m
+  ревізія 1: image.tag=1.1.0  tasks=1 stats=1 frontend=1  cacheTTL=5  ingress=false  tasks.cpu.limit=250m
+  ревізія 2: image.tag=1.0.0  tasks=1 stats=1 frontend=1  cacheTTL=5  ingress=false  tasks.cpu.limit=250m
+  ревізія 3: image.tag=1.0.0  tasks=3 stats=2 frontend=2  cacheTTL=30  ingress=true  tasks.cpu.limit=500m
+
+[1;36m# Маніфести: ревізія 1 -> 2[0m
+   1 <           image: ghcr.io/aanastasiaakk/devops-labs/frontend:1.1.0
+   1 <           image: ghcr.io/aanastasiaakk/devops-labs/stats-service:1.1.0
+   1 <           image: ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.1.0
+   1 >           image: ghcr.io/aanastasiaakk/devops-labs/frontend:1.0.0
+   1 >           image: ghcr.io/aanastasiaakk/devops-labs/stats-service:1.0.0
+   1 >           image: ghcr.io/aanastasiaakk/devops-labs/tasks-service:1.0.0
+
+[1;36m# Маніфести: ревізія 2 -> 3[0m
+   2 <               cpu: 100m
+   1 <               cpu: 150m
+   2 <               cpu: 250m
+   3 <               cpu: 25m
+   2 <               cpu: 50m
+   1 <   CACHE_TTL: "5"
+   3 <   replicas: 1
+   2 >               cpu: 100m
+   2 >               cpu: 200m
+   1 >               cpu: 300m
+   2 >               cpu: 500m
+   3 >               cpu: 50m
+   1 >   CACHE_TTL: "30"
+   1 >   ingressClassName: nginx
+
+[screenshot 23-history.png]
+[3J[H[2J[1;36m==================== 8d. Відкат до ревізії 1 ====================[0m
+
+[1;32m$ helm rollback task-manager 1 -n lab4 --wait --timeout 5m[0m
+Rollback was a success! Happy Helming!
+
+[1;32m$ helm history task-manager -n lab4[0m
+REVISION	UPDATED                 	STATUS    	CHART             	APP VERSION	DESCRIPTION     
+1       	Wed Nov 18 16:42:21 2026	superseded	task-manager-0.1.0	1.1.0      	Install complete
+2       	Wed Nov 18 16:43:17 2026	superseded	task-manager-0.1.0	1.1.0      	Upgrade complete
+3       	Wed Nov 18 16:44:10 2026	superseded	task-manager-0.1.0	1.1.0      	Upgrade complete
+4       	Wed Nov 18 16:45:20 2026	deployed  	task-manager-0.1.0	1.1.0      	Rollback to 1   
+
+[1;32m$ kubectl -n lab4 get deployments,ingress[0m
+NAME                                         READY   UP-TO-DATE   AVAILABLE   AGE
+deployment.apps/task-manager-frontend        1/1     1            1           3m32s
+deployment.apps/task-manager-postgres        1/1     1            1           3m32s
+deployment.apps/task-manager-redis           1/1     1            1           3m32s
+deployment.apps/task-manager-stats-service   1/1     1            1           3m32s
+deployment.apps/task-manager-tasks-service   1/1     1            1           3m32s
+
+Версія після відкату: {"status":"ok","service":"tasks-service","version":"1.1.0","pod":"task-manager-tasks-service-64fd4868d-bhhkc"}
+
+[screenshot 24-rollback.png]
+[3J[H[2J[1;36m==================== 8d. Після відкату реліз проходить тест ====================[0m
+
+[1;32m$ helm test task-manager -n lab4[0m
+NAME: task-manager
+LAST DEPLOYED: Wed Nov 18 16:45:20 2026
+NAMESPACE: lab4
+STATUS: deployed
+REVISION: 4
+TEST SUITE:     task-manager-test
+Last Started:   Wed Nov 18 16:45:57 2026
+Last Completed: Wed Nov 18 16:45:59 2026
+Phase:          Succeeded
+NOTES:
+Task Manager встановлено.
+  Реліз:     task-manager (ревізія 1)
+  Namespace: lab4
+  Версія:    1.1.0
+
+1. Дочекатися, поки всі поди стануть Running:
+     kubectl -n lab4 get pods -l app.kubernetes.io/instance=task-manager -w
+
+2. Відкрити застосунок:
+     Ingress вимкнено. Прокинути порт frontend на свій комп'ютер:
+       kubectl -n lab4 port-forward svc/task-manager-frontend 8080:80
+     і відкрити в браузері http://localhost:8080/
+
+3. Перевірити реліз тестом:
+     helm test task-manager -n lab4
+
+[screenshot 25-rollback-test.png]
+[3J[H[2J[1;36m==================== 8e. Видалення релізу однією командою ====================[0m
+
+[1;32m$ helm uninstall task-manager -n lab4 --wait[0m
+release "task-manager" uninstalled
+
+[1;32m$ kubectl -n lab4 wait --for=delete pod -l app.kubernetes.io/instance=task-manager --timeout=180s[0m
+  усі поди релізу видалено
+
+[1;32m$ helm list -n lab4[0m
+NAME	NAMESPACE	REVISION	UPDATED	STATUS	CHART	APP VERSION
+
+[1;32m$ kubectl -n lab4 get all,configmaps,secrets,pvc,ingress,jobs[0m
+NAME                         DATA   AGE
+configmap/kube-root-ca.crt   1      15m
+
+[1;36m# kube-root-ca.crt Kubernetes створює в кожному namespace сам, до релізу не належить.[0m
+
+[1;32m$ kubectl -n lab4 get all,configmaps,secrets,pvc,ingress,jobs -l app.kubernetes.io/instance=task-manager[0m
+No resources found in lab4 namespace.
+
+[screenshot 26-uninstall.png]
+[3J[H[2J
+Готово. Скріншоти: report/lab4/screenshots/, лог: report/lab4/lab4-log.txt

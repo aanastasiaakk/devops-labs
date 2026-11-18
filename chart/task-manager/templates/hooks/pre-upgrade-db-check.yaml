@@ -1,0 +1,64 @@
+{{- if .Values.hooks.preUpgradeCheck.enabled }}
+{{- $pgHost := include "task-manager.componentName" (dict "ctx" $ "component" "postgres") }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ include "task-manager.componentName" (dict "ctx" $ "component" "pre-upgrade-check") }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "task-manager.componentLabels" (dict "ctx" $ "component" "pre-upgrade-check") | nindent 4 }}
+  annotations:
+    "helm.sh/hook": pre-upgrade
+    "helm.sh/hook-weight": "0"
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  backoffLimit: 0
+  activeDeadlineSeconds: 120
+  template:
+    metadata:
+      labels:
+        {{- include "task-manager.componentSelectorLabels" (dict "ctx" $ "component" "pre-upgrade-check") | nindent 8 }}
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: db-check
+          image: {{ include "task-manager.postgresImage" . }}
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: PGHOST
+              value: {{ $pgHost | quote }}
+            - name: PGPORT
+              value: {{ .Values.postgresql.service.port | quote }}
+            - name: PGDATABASE
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "task-manager.configName" . }}
+                  key: POSTGRES_DB
+            - name: PGUSER
+              valueFrom:
+                configMapKeyRef:
+                  name: {{ include "task-manager.configName" . }}
+                  key: POSTGRES_USER
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "task-manager.secretName" . }}
+                  key: POSTGRES_PASSWORD
+          command:
+            - sh
+            - -c
+            - |
+              set -e
+              echo "[pre-upgrade] реліз {{ .Release.Name }}: перевірка перед оновленням до ревізії {{ .Release.Revision }}"
+              pg_isready -t 30
+              COUNT=$(psql -tAc 'SELECT count(*) FROM tasks')
+              echo "[pre-upgrade] задач у базі перед оновленням: $COUNT"
+              echo "[pre-upgrade] база доступна, оновлення можна продовжувати"
+          resources:
+            requests:
+              cpu: 10m
+              memory: 32Mi
+            limits:
+              cpu: 100m
+              memory: 64Mi
+{{- end }}

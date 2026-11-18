@@ -220,3 +220,163 @@ minikube tunnel
 ```
 
 Видалити все: `kubectl delete namespace task-manager`.
+
+---
+
+# Лабораторна робота №4 — Пакування застосунку в Helm-чарт
+
+Маніфести з `k8s/` (лаба №3) переписано у власний Helm-чарт `chart/task-manager/`. Чарт розгортає той самий застосунок і той самий набір об'єктів, але всі змінні параметри винесено у значення, тож один чарт обслуговує кілька середовищ.
+
+## Структура чарта
+
+```
+chart/task-manager/
+├── Chart.yaml              # ім'я, опис, version, appVersion
+├── values.yaml             # значення за замовчуванням (= dev)
+├── values-dev.yaml         # середовище розробки
+├── values-prod.yaml        # середовище prod
+├── .helmignore
+└── templates/
+    ├── _helpers.tpl        # іменовані шаблони: імена об'єктів, мітки, образ
+    ├── NOTES.txt           # підказка після встановлення
+    ├── configmap.yaml      # ← k8s/01-configmap.yaml (+ конфіг nginx)
+    ├── secret.yaml         # ← k8s/02-secret.yaml
+    ├── postgres-pvc.yaml   # ← k8s/10-postgres-pvc.yaml   (postgresql.persistence.enabled)
+    ├── postgres-deployment.yaml, postgres-service.yaml
+    ├── redis-deployment.yaml, redis-service.yaml
+    ├── tasks-deployment.yaml, tasks-service.yaml
+    ├── stats-deployment.yaml, stats-service.yaml
+    ├── frontend-deployment.yaml, frontend-service.yaml
+    ├── ingress.yaml        # ← k8s/60-ingress.yaml       (ingress.enabled)
+    ├── hooks/pre-upgrade-db-check.yaml   # хук pre-upgrade (завдання 9b)
+    └── tests/test-app.yaml               # тест релізу для helm test (завдання 9b)
+```
+
+`k8s/00-namespace.yaml` у чарт не перенесено: namespace створює команда `helm install --create-namespace`. Helm не рекомендує описувати в чарті namespace, у який ставиться сам реліз.
+
+## version і appVersion
+
+| Поле | Значення | Що означає в цьому проєкті |
+|---|---|---|
+| `version` | `0.1.0` | Версія **чарта**: шаблонів, values, хуків. Збільшується, коли змінюємо сам чарт (додали параметр, виправили шаблон), навіть якщо код застосунку не змінився. |
+| `appVersion` | `1.1.0` | Версія **застосунку**, тобто тег образів `tasks-service`, `stats-service`, `frontend` у GHCR (CI публікує їх за git-тегами `v1.0.0`, `v1.1.0`). Якщо `image.tag` порожній, чарт бере саме цей тег. |
+
+Наприклад, якщо виправити помилку в шаблоні без зміни коду, отримаємо `version: 0.1.1`, а `appVersion` лишиться `1.1.0`. Якщо вийде новий образ `1.2.0`, буде `appVersion: "1.2.0"` і нова версія чарта.
+
+## Імена об'єктів
+
+Імена будуються з імені релізу (шаблон `task-manager.fullname` у `_helpers.tpl`):
+
+| Реліз | Приклад імен |
+|---|---|
+| `task-manager` | `task-manager-tasks-service`, `task-manager-postgres`, `task-manager-config` |
+| `demo-copy` | `demo-copy-task-manager-tasks-service`, `demo-copy-task-manager-postgres`, … |
+
+Тому чарт можна встановити двічі в один кластер і навіть в один namespace. Адреси сервісів у ConfigMap і конфіг nginx для frontend теж генеруються з цих імен.
+
+## Параметри values
+
+| Параметр | За замовчуванням (dev) | prod | Опис |
+|---|---|---|---|
+| `image.tag` | `1.1.0` | `1.0.0` | Спільний тег образів трьох сервісів (`""` → `appVersion`) |
+| `image.pullPolicy` | `IfNotPresent` | | Політика завантаження образів |
+| `tasksService.replicaCount` | `1` | `3` | Кількість реплік tasks-service |
+| `tasksService.image.repository` | `ghcr.io/aanastasiaakk/devops-labs/tasks-service` | | Репозиторій образу |
+| `tasksService.image.tag` | `""` | | Окремий тег лише для цього сервісу |
+| `tasksService.containerPort` | `8000` | | Порт застосунку в контейнері |
+| `tasksService.service.type` / `.port` | `ClusterIP` / `8000` | | Тип і порт Service |
+| `tasksService.resources` | 50m/96Mi → 250m/192Mi | 100m/128Mi → 500m/256Mi | requests → limits |
+| `statsService.replicaCount` | `1` | `2` | Кількість реплік stats-service |
+| `statsService.image.repository` / `.tag` | `…/stats-service` / `""` | | Образ |
+| `statsService.service.type` / `.port` | `ClusterIP` / `8001` | | Тип і порт Service |
+| `statsService.resources` | 25m/64Mi → 150m/128Mi | 50m/96Mi → 300m/192Mi | requests → limits |
+| `frontend.replicaCount` | `1` | `2` | Кількість реплік frontend |
+| `frontend.image.repository` / `.tag` | `…/frontend` / `""` | | Образ |
+| `frontend.service.type` / `.port` | `ClusterIP` / `80` | | Тип і порт Service |
+| `frontend.resources` | 25m/32Mi → 100m/64Mi | 50m/32Mi → 200m/64Mi | requests → limits |
+| `postgresql.image.repository` / `.tag` | `postgres` / `16-alpine` | | Образ бази |
+| `postgresql.replicaCount` | `1` | | Має лишатися 1 (диск ReadWriteOnce) |
+| `postgresql.database` / `.username` | `tasks` / `app` | | Назва бази і користувач |
+| `postgresql.password` | `""` | `""` | Порожній → випадковий пароль при встановленні, при оновленнях той самий. Не записувати у файли, лише `--set` |
+| `postgresql.service.port` | `5432` | | Порт Service бази |
+| `postgresql.persistence.enabled` | `true` | `true` | Створювати PVC (`false` → `emptyDir`) |
+| `postgresql.persistence.size` / `.accessMode` / `.storageClass` | `1Gi` / `ReadWriteOnce` / `""` | | Параметри PVC |
+| `postgresql.resources` | 50m/128Mi → 250m/256Mi | 100m/256Mi → 500m/512Mi | requests → limits |
+| `redis.image.repository` / `.tag` | `redis` / `7-alpine` | | Образ Redis |
+| `redis.replicaCount` / `redis.service.port` | `1` / `6379` | | Репліки і порт |
+| `redis.resources` | 25m/32Mi → 100m/64Mi | 50m/64Mi → 200m/128Mi | requests → limits |
+| `config.cacheTTL` | `5` | `30` | Час життя кешу статистики (CACHE_TTL), с |
+| `ingress.enabled` | `false` | `true` | Створювати Ingress |
+| `ingress.className` / `.host` / `.path` | `nginx` / `""` / `/` | | Клас контролера, хост (`""` = будь-який), шлях |
+| `ingress.annotations` | `{}` | | Додаткові анотації Ingress |
+| `hooks.preUpgradeCheck.enabled` | `true` | | Хук pre-upgrade з перевіркою бази |
+| `tests.image.repository` / `.tag` | `curlimages/curl` / `8.11.1` | | Образ пода для `helm test` |
+| `nameOverride` / `fullnameOverride` | `""` | | Перевизначення імен об'єктів |
+
+## Пріоритет значень
+
+Від найслабшого до найсильнішого:
+
+1. `values.yaml` у чарті (значення за замовчуванням);
+2. файли `-f` / `--values` (якщо файлів кілька, перемагає пізніший);
+3. прапорці `--set` (перекривають і values.yaml, і файли).
+
+Значення зливаються по ключах: файл `-f` замінює лише ті ключі, які в ньому є, решта береться з `values.yaml`.
+
+```bash
+helm template task-manager chart/task-manager -f chart/task-manager/values-prod.yaml \
+  --set tasksService.replicaCount=5 --show-only templates/tasks-deployment.yaml | grep replicas
+#   replicas: 5     (values.yaml: 1, values-prod.yaml: 3, --set: 5)
+```
+
+## Встановлення
+
+Передумови: `brew install helm`, запущений minikube з аддоном ingress (`minikube addons enable ingress`).
+
+```bash
+# dev
+helm install task-manager ./chart/task-manager -n lab4 --create-namespace \
+  -f chart/task-manager/values-dev.yaml
+
+# prod (Ingress, 3 репліки tasks-service, стабільна версія 1.0.0)
+helm install task-manager ./chart/task-manager -n lab4-prod --create-namespace \
+  -f chart/task-manager/values-prod.yaml
+
+# Те саме з власним паролем бази (пароль лише в командному рядку, не у файлі)
+helm install task-manager ./chart/task-manager -n lab4-prod --create-namespace \
+  -f chart/task-manager/values-prod.yaml --set postgresql.password="$DB_PASSWORD"
+```
+
+Після встановлення Helm виводить `NOTES.txt` з командою, як відкрити застосунок:
+- dev: `kubectl -n lab4 port-forward svc/task-manager-frontend 8080:80` → http://localhost:8080
+- prod: `minikube tunnel` → http://127.0.0.1
+
+## Основні команди
+
+```bash
+helm lint chart/task-manager -f chart/task-manager/values-prod.yaml      # перевірка чарта
+helm template task-manager chart/task-manager -f chart/task-manager/values-dev.yaml   # маніфести без встановлення
+helm list -n lab4                                  # релізи
+helm status task-manager -n lab4                   # статус
+helm get values task-manager -n lab4 [--all]       # значення релізу
+helm upgrade task-manager chart/task-manager -n lab4 -f chart/task-manager/values-dev.yaml --set image.tag=1.0.0
+helm history task-manager -n lab4                  # ревізії
+helm rollback task-manager 1 -n lab4               # відкат до ревізії 1
+helm test task-manager -n lab4                     # тест релізу
+helm uninstall task-manager -n lab4                # видалення
+kubectl -n lab4 get secrets -l owner=helm          # де Helm зберігає стан релізу
+```
+
+## Хук і тест (завдання 9b)
+
+- **`templates/hooks/pre-upgrade-db-check.yaml`** — Job з анотацією `helm.sh/hook: pre-upgrade`. Перед кожним `helm upgrade` він перевіряє, що PostgreSQL доступна, і виводить кількість задач у базі. Якщо Job падає, Helm скасовує оновлення, і реліз лишається на попередній ревізії. Після успіху Helm видаляє Job сам (`hook-delete-policy: before-hook-creation,hook-succeeded`).
+- **`templates/tests/test-app.yaml`** — под з анотацією `helm.sh/hook: test`. Команда `helm test` запускає його, і под через frontend перевіряє весь ланцюжок: сторінку, `/api/tasks` (tasks-service + база), `/api/stats` (stats-service + Redis) і `/api/version`.
+
+## Демонстрація
+
+```bash
+./scripts/lab4-demo.sh check     # без кластера: lint, різниця dev/prod, пріоритет значень, порівняння з лабою №3
+./scripts/lab4-demo.sh cluster   # install, upgrade (--set і prod), history, rollback, test, uninstall
+```
+
+Вивід кожного етапу зберігається в `report/lab4/`.

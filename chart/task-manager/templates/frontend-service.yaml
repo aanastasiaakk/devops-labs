@@ -1,0 +1,16 @@
+{{- $c := dict "ctx" $ "component" "frontend" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "task-manager.componentName" $c }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "task-manager.componentLabels" $c | nindent 4 }}
+spec:
+  type: {{ .Values.frontend.service.type }}
+  selector:
+    {{- include "task-manager.componentSelectorLabels" $c | nindent 4 }}
+  ports:
+    - name: http
+      port: {{ .Values.frontend.service.port }}
+      targetPort: {{ .Values.frontend.containerPort }}

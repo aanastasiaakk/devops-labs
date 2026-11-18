@@ -1,0 +1,15 @@
+{{- $c := dict "ctx" $ "component" "postgres" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "task-manager.componentName" $c }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "task-manager.componentLabels" $c | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "task-manager.componentSelectorLabels" $c | nindent 4 }}
+  ports:
+    - port: {{ .Values.postgresql.service.port }}
+      targetPort: 5432

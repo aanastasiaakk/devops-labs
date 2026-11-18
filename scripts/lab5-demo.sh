@@ -151,8 +151,17 @@ argocd)
     printf '\nПочатковий пароль admin (у лог не пишеться): %s\n' "$INIT" > /dev/tty
     printf '\n%s$ argocd login localhost:%s --username admin --password *** --insecure%s\n' "$G" "$ARGO_PORT" "$N"
     argocd login localhost:$ARGO_PORT --username admin --password "$INIT" --insecure
-    note "Зміна пароля admin. Current password: вставити пароль вище; New password: свій новий пароль"
-    argocd account update-password
+    note "Зміна пароля admin: початковий пароль скрипт підставить сам, введи лише новий (мінімум 8 символів)"
+    while true; do
+      read -r -s -p "Новий пароль admin: " NEWPW </dev/tty; echo
+      read -r -s -p "Ще раз: " NEWPW2 </dev/tty; echo
+      [ "$NEWPW" = "$NEWPW2" ] && [ ${#NEWPW} -ge 8 ] && break
+      echo "Паролі не збігаються або коротші за 8 символів, спробуй ще раз"
+    done
+    printf '\n%s$ argocd account update-password --current-password *** --new-password ***%s\n' "$G" "$N"
+    argocd account update-password --current-password "$INIT" --new-password "$NEWPW"
+    argocd login localhost:$ARGO_PORT --username admin --password "$NEWPW" --insecure >/dev/null
+    unset NEWPW NEWPW2
     run kubectl -n argocd delete secret argocd-initial-admin-secret
   else
     note "Початковий пароль уже змінено. Вхід із твоїм паролем:"
@@ -173,7 +182,7 @@ secret)
   if kubectl -n "$NS" get secret "$SECRET" >/dev/null 2>&1; then
     note "Secret $SECRET уже існує, залишаю (з ним уже ініціалізована база)"
   else
-    PW=$(LC_ALL=C tr -dc 'A-Za-z0-9' </dev/urandom | head -c 24)
+    PW=$(openssl rand -hex 16)   # випадковий пароль з 32 символів 0-9a-f
     printf '\n%s$ kubectl -n %s create secret generic %s --from-literal=POSTGRES_PASSWORD=*** --from-literal=DATABASE_URL=postgresql://app:***@%s-postgres:5432/tasks%s\n' "$G" "$NS" "$SECRET" "$APP" "$N"
     kubectl -n "$NS" create secret generic "$SECRET" \
       --from-literal=POSTGRES_PASSWORD="$PW" \

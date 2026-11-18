@@ -1,0 +1,26 @@
+# Application для Helm-чарту Task Manager (ЛР-4), яким керує кореневий root.
+# Ім'я Application = ім'я Helm-релізу, тому об'єкти називаються так само, як після
+# `helm install task-manager charts/task-manager` у ЛР-4 (task-manager-tasks-service тощо).
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: task-manager
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/aanastasiaakk/devops-labs.git
+    targetRevision: main           # гілка, за якою стежить Argo CD
+    path: charts/task-manager      # каталог чарту в репозиторії
+    helm:
+      valueFiles:
+        - values-minikube.yaml     # шлях відносно каталогу чарту (path), а не кореня репозиторію
+  destination:
+    server: https://kubernetes.default.svc   # той самий кластер, де працює Argo CD
+    namespace: task-manager
+  syncPolicy:
+    automated:                     # автоматична синхронізація після кожного нового коміту
+      prune: true                  # об'єкт зник із Git -> Argo CD видаляє його з кластера
+      selfHeal: false              # ЛР-5 п.6a: спершу false (дрейф лишається), потім true
+    syncOptions:
+      - CreateNamespace=true       # створити namespace task-manager, якщо його ще немає

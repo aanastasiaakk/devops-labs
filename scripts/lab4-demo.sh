@@ -2,7 +2,7 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-CHART=chart/task-manager
+CHART=charts/task-manager
 DEV=$CHART/values-dev.yaml
 PROD=$CHART/values-prod.yaml
 REL=task-manager

@@ -16,21 +16,25 @@
     li span { flex: 1; }
     li button { background: #d9534f; }
     #stats { background: #fff; padding: 10px; border-radius: 6px; font-size: 14px; }
+    #version { font-size: 13px; font-weight: 600; color: #fff; background: #1f9d55; padding: 3px 8px; border-radius: 10px; vertical-align: middle; }
+    footer { margin-top: 16px; font-size: 12px; color: #888; }
   </style>
 </head>
 <body>
-  <h1>Task Manager</h1>
+  <h1>Task Manager <span id="version">…</span></h1>
   <form id="form">
     <input id="title" placeholder="Нова задача" required>
     <button>Додати</button>
   </form>
   <ul id="list"></ul>
   <div id="stats">Завантаження статистики…</div>
+  <footer id="pod"></footer>
 
   <script>
     // Запити йдуть на той самий хост; nginx перенаправляє /api/tasks і /api/stats на потрібні сервіси.
     const TASKS = "/api/tasks";
     const STATS = "/api/stats";
+    const VERSION = "/api/version";
 
     async function load() {
       const tasks = await (await fetch(TASKS)).json();
@@ -59,6 +63,15 @@
       } catch { document.getElementById("stats").textContent = "Статистика недоступна"; }
     }
 
+    // Версія застосунку і под, що відповів (з ЛР-5: видно, яка версія розгорнута через Argo CD)
+    async function loadVersion() {
+      try {
+        const v = await (await fetch(VERSION)).json();
+        document.getElementById("version").textContent = `v${v.version}`;
+        document.getElementById("pod").textContent = `Відповів под: ${v.pod}`;
+      } catch { document.getElementById("version").textContent = "версія невідома"; }
+    }
+
     document.getElementById("form").onsubmit = async (e) => {
       e.preventDefault();
       const input = document.getElementById("title");
@@ -68,6 +81,7 @@
     };
 
     load();
+    loadVersion();
   </script>
 </body>
 </html>

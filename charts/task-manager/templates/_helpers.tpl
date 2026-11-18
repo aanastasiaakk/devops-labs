@@ -23,8 +23,16 @@
 {{- printf "%s-config" (include "task-manager.fullname" .) | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
+{{/*
+Ім'я Secret з паролем БД. Якщо задано existingSecret (ЛР-5, GitOps), чарт Secret не створює,
+а всі Deployment посилаються на Secret, створений вручну в кластері: паролів у Git немає.
+*/}}
 {{- define "task-manager.secretName" -}}
+{{- if .Values.existingSecret }}
+{{- .Values.existingSecret }}
+{{- else }}
 {{- printf "%s-secret" (include "task-manager.fullname" .) | trunc 63 | trimSuffix "-" }}
+{{- end }}
 {{- end }}
 
 {{- define "task-manager.chart" -}}

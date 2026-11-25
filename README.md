@@ -431,3 +431,71 @@ scripts/lab5-demo.sh          # демонстрація всіх пунктів
 
 Відкат робиться комітом (`git revert`), а не `argocd app rollback`: з увімкненою автосинхронізацією Argo CD
 одразу повернув би стан із Git.
+
+---
+
+# Лабораторна робота №6 — Progressive delivery: canary з Argo Rollouts
+
+Продовження ЛР-5 (той самий кластер, Argo CD і root). tasks-service тепер розгортає не Deployment, а **Rollout**
+(Argo Rollouts). Обрано варіант **a — canary**: нова версія отримує частку подів кроками 20 → 60 → 80 → 100 %,
+на першому кроці реліз чекає ручного `promote`. Чарт підтримує і blue-green (п.3b), див. нижче.
+
+## Що додано
+
+```
+argocd-apps/argo-rollouts.yaml            # контролер Argo Rollouts (чарт argo-helm 2.43.12 = v1.10.2), sync-wave -1
+argocd-apps/task-manager.yaml             # + syncPolicy.retry: якщо синхронізація прийшла раніше за CRD Rollout
+charts/task-manager/
+  Chart.yaml                              # version 0.3.0
+  values.yaml                             # rollout.enabled: false, rollout.strategy: {} (типово - Deployment, як раніше)
+  values-minikube.yaml                    # tasksService.replicaCount: 5, rollout.enabled: true, кроки canary
+  templates/_tasks-pod.tpl                # спільний шаблон пода tasks-service (для Deployment і для Rollout)
+  templates/tasks-deployment.yaml         # обгорнуто в {{- if not .Values.rollout.enabled }}
+  templates/tasks-rollout.yaml            # kind: Rollout, strategy з values
+  templates/tasks-service-preview.yaml    # Service ...-preview, лише для blue-green
+scripts/lab6-demo.sh                      # демонстрація по етапах, вивід у report/lab6/
+```
+
+- **Под однаковий** в обох варіантах: замість копіювання блоку `template:` він винесений у хелпер
+  `task-manager.tasksPodTemplate`, тож Deployment і Rollout не можуть розійтися.
+- **Deployment і Rollout ніколи не існують разом**: інакше два контролери керували б тими самими подами.
+- **5 реплік**: без service mesh canary ділить трафік кількістю подів, тож 20/60/80 % = 1/3/4 поди з 5.
+- **Blue-green**: замінити в values-minikube.yaml `strategy.canary` на
+  `strategy.blueGreen: {autoPromotionEnabled: false, scaleDownDelaySeconds: 30}` і зменшити `replicaCount` до 4.
+  Імена `activeService` (task-manager-tasks-service) і `previewService` (...-preview) чарт підставляє сам.
+
+## Версії
+
+Реліз = зміна `image.tag` у values-minikube.yaml комітом (як у ЛР-5). Rollout стартує лише тоді, коли змінюється
+шаблон пода (образ, змінні, мітки), а не `replicas` чи стратегія. Образи кількох версій збирає CI з git-тегів:
+
+| Версія | Для чого |
+| --- | --- |
+| 1.2.0 | стабільна після ЛР-5 |
+| 1.3.0 | п.4 — canary-реліз із promote |
+| 1.4.0 | п.5 — реліз, який скасовуємо (abort) |
+| 1.5.0 | запасна для захисту |
+
+## Порядок виконання
+
+```bash
+./scripts/lab6-demo.sh check       # helm lint/template: Rollout замість Deployment, canary; варіант blue-green
+./scripts/lab6-demo.sh images      # git-теги v1.3.0 v1.4.0 v1.5.0 -> CI -> образи в GHCR
+./scripts/lab6-demo.sh controller  # коміт argo-rollouts.yaml -> Synced/Healthy, CRD argoproj.io, плагін kubectl
+./scripts/lab6-demo.sh rollout     # коміт чарту: Deployment tasks-service -> Rollout, 5 подів
+./scripts/lab6-demo.sh release     # 1.2.0 -> 1.3.0: Suspended на 20 % -> promote -> Healthy
+./scripts/lab6-demo.sh abort       # 1.3.0 -> 1.4.0: пауза -> abort -> Synced + Degraded, працює 1.3.0
+./scripts/lab6-demo.sh revert      # git revert коміту з 1.4.0 -> Synced / Healthy
+
+# в окремих терміналах під час release / abort:
+./scripts/lab6-demo.sh watch       # kubectl argo rollouts get rollout task-manager-tasks-service -n task-manager --watch
+./scripts/lab6-demo.sh traffic     # цикл curl /version з пода в кластері (port-forward іде в один под)
+./scripts/lab6-demo.sh dashboard   # веб-інтерфейс Argo Rollouts: http://localhost:3100
+./scripts/lab6-demo.sh ui          # port-forward: Argo CD на 8080, застосунок на 8081
+```
+
+Контролер і Rollout комітяться окремо: спершу `controller` і дочекатися Healthy, потім `rollout`.
+Promote / abort можна робити і з інтерфейсу Argo CD: об'єкт Rollout → меню ⋮ → Resume, Promote-Full, Abort, Retry.
+
+Після `abort` маніфест у кластері збігається з Git (там 1.4.0), тож Sync — **Synced**, але реліз скасовано і працює
+стара версія, тож Health — **Degraded**. Завершуємо через Git (`git revert`): джерело правди — Git.

@@ -22,5 +22,13 @@ spec:
     automated:                     # автоматична синхронізація після кожного нового коміту
       prune: true                  # об'єкт зник із Git -> Argo CD видаляє його з кластера
       selfHeal: true               # ЛР-5 п.6a: ручні зміни в кластері Argo CD повертає до стану з Git
+    # ЛР-6 п.1: якщо синхронізація прийшла раніше, ніж з'явилися CRD Argo Rollouts
+    # ("no matches for kind Rollout"), Argo CD повторить її сам: 10с, 20с, 40с ... до 3 хв.
+    retry:
+      limit: 5
+      backoff:
+        duration: 10s
+        factor: 2
+        maxDuration: 3m
     syncOptions:
       - CreateNamespace=true       # створити namespace task-manager, якщо його ще немає

@@ -1,0 +1,31 @@
+# ЛР-6 п.1: контролер Argo Rollouts - ще один застосунок у argocd-apps/, root підхопить його сам.
+# Ставиться з офіційного Helm-репозиторію argo-helm (а не з нашого Git): чарт разом із CRD
+# rollouts.argoproj.io, analysistemplates.argoproj.io, experiments.argoproj.io тощо.
+# Версію чарту дивимось так:  helm repo add argo https://argoproj.github.io/argo-helm
+#                             helm search repo argo/argo-rollouts
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: argo-rollouts
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "-1"     # root створює його раніше за task-manager (хвиля 0)
+spec:
+  project: default
+  source:
+    repoURL: https://argoproj.github.io/argo-helm
+    chart: argo-rollouts
+    targetRevision: 2.43.12                # чарт 2.43.12 = контролер Argo Rollouts v1.10.2
+    helm:
+      valuesObject:
+        controller:
+          replicas: 1                      # minikube з одним вузлом: двох реплік (типово) не треба
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: argo-rollouts
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

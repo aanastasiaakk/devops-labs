@@ -1,6 +1,8 @@
+{{- /* ЛР-6: коли rollout.enabled, tasks-service розгортає Rollout (tasks-rollout.yaml), а не Deployment.
+     Обидва одночасно не можна: два контролери керували б тими самими подами. */}}
+{{- if not .Values.rollout.enabled }}
 {{- $c := dict "ctx" $ "component" "tasks-service" }}
 {{- $v := .Values.tasksService }}
-{{- $pgHost := include "task-manager.componentName" (dict "ctx" $ "component" "postgres") }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -21,52 +23,5 @@ spec:
     matchLabels:
       {{- include "task-manager.componentSelectorLabels" $c | nindent 6 }}
   template:
-    metadata:
-      labels:
-        {{- include "task-manager.componentLabels" $c | nindent 8 }}
-      annotations:
-        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
-    spec:
-      terminationGracePeriodSeconds: 30
-      initContainers:
-        - name: wait-for-postgres
-          image: {{ include "task-manager.postgresImage" . }}
-          imagePullPolicy: IfNotPresent
-          command: ["sh", "-c", "until pg_isready -h {{ $pgHost }} -p {{ .Values.postgresql.service.port }}; do echo 'waiting for postgres'; sleep 2; done"]
-          resources:
-            requests:
-              cpu: 10m
-              memory: 16Mi
-            limits:
-              cpu: 100m
-              memory: 64Mi
-      containers:
-        - name: tasks-service
-          image: {{ include "task-manager.image" (dict "ctx" $ "image" $v.image) }}
-          imagePullPolicy: {{ .Values.image.pullPolicy }}
-          ports:
-            - containerPort: {{ $v.containerPort }}
-          env:
-            - name: DATABASE_URL
-              valueFrom:
-                secretKeyRef:
-                  name: {{ include "task-manager.secretName" . }}
-                  key: DATABASE_URL
-          lifecycle:
-            preStop:
-              exec:
-                command: ["sleep", "10"]
-          resources:
-            {{- toYaml $v.resources | nindent 12 }}
-          readinessProbe:
-            httpGet:
-              path: /ready
-              port: {{ $v.containerPort }}
-            initialDelaySeconds: 3
-            periodSeconds: 5
-          livenessProbe:
-            httpGet:
-              path: /health
-              port: {{ $v.containerPort }}
-            initialDelaySeconds: 30
-            periodSeconds: 10
+    {{- include "task-manager.tasksPodTemplate" . | nindent 4 }}
+{{- end }}

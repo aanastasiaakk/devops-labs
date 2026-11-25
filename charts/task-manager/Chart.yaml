@@ -5,7 +5,7 @@ description: >-
   stats-service (статистика з кешем), frontend (nginx), PostgreSQL і Redis.
 type: application
 
-version: 0.2.0
+version: 0.3.0   # ЛР-6: Rollout для tasks-service
 
 appVersion: "1.1.0"
 

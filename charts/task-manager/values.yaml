@@ -8,6 +8,16 @@ existingSecret: ""
 # Через скільки секунд без прогресу Deployment вважається невдалим (стандарт Kubernetes: 600)
 progressDeadlineSeconds: 600
 
+# ЛР-6: progressive delivery з Argo Rollouts для tasks-service.
+# enabled: false -> звичайний Deployment (як у ЛР-3..5); true -> Rollout зі стратегією нижче.
+# Потрібен контролер Argo Rollouts у кластері (argocd-apps/argo-rollouts.yaml).
+rollout:
+  enabled: false
+  # canary:    {canary: {steps: [{setWeight: 20}, {pause: {}}, ...]}}
+  # blueGreen: {blueGreen: {autoPromotionEnabled: false, scaleDownDelaySeconds: 30}}
+  #            activeService/previewService чарт підставить сам (tasks-service і tasks-service-preview)
+  strategy: {}
+
 image:
   tag: "1.1.0"
   pullPolicy: IfNotPresent

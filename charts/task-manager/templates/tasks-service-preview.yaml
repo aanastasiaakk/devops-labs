@@ -1,0 +1,22 @@
+{{- /*
+ЛР-6 п.3b: другий Service для blue-green. Через нього видно нову (preview) версію ще до promote,
+поки основний Service tasks-service (active) веде на стару. Селектор той самий: контролер
+Argo Rollouts сам дописує в обидва Service мітку rollouts-pod-template-hash потрібної версії.
+*/}}
+{{- if and .Values.rollout.enabled .Values.rollout.strategy.blueGreen }}
+{{- $c := dict "ctx" $ "component" "tasks-service" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "task-manager.componentName" $c }}-preview
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "task-manager.componentLabels" $c | nindent 4 }}
+spec:
+  type: ClusterIP
+  selector:
+    {{- include "task-manager.componentSelectorLabels" $c | nindent 4 }}
+  ports:
+    - port: {{ .Values.tasksService.service.port }}
+      targetPort: {{ .Values.tasksService.containerPort }}
+{{- end }}

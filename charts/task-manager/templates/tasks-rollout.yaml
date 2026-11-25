@@ -1,0 +1,37 @@
+{{- /*
+ЛР-6 п.2: Rollout (Argo Rollouts) замість Deployment для tasks-service.
+Под той самий (хелпер task-manager.tasksPodTemplate), змінюється лише спосіб оновлення:
+canary (частка нових подів зростає кроками з паузами) або blue-green (нова версія
+піднімається повністю поруч і отримує трафік лише після promote).
+Стратегія береться з values: rollout.strategy.
+*/}}
+{{- if .Values.rollout.enabled }}
+{{- $c := dict "ctx" $ "component" "tasks-service" }}
+{{- $v := .Values.tasksService }}
+{{- $svc := include "task-manager.componentName" $c }}
+{{- $strategy := deepCopy .Values.rollout.strategy }}
+{{- if $strategy.blueGreen }}
+{{- /* Імена сервісів підставляємо самі, щоб не дублювати в values ім'я релізу */}}
+{{- $_ := set $strategy.blueGreen "activeService" ($strategy.blueGreen.activeService | default $svc) }}
+{{- $_ := set $strategy.blueGreen "previewService" ($strategy.blueGreen.previewService | default (printf "%s-preview" $svc)) }}
+{{- end }}
+apiVersion: argoproj.io/v1alpha1
+kind: Rollout
+metadata:
+  name: {{ $svc }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "task-manager.componentLabels" $c | nindent 4 }}
+spec:
+  replicas: {{ $v.replicaCount }}
+  revisionHistoryLimit: 3
+  # Без прогресу стільки секунд -> Rollout Degraded (паузи не рахуються)
+  progressDeadlineSeconds: {{ .Values.progressDeadlineSeconds }}
+  selector:
+    matchLabels:
+      {{- include "task-manager.componentSelectorLabels" $c | nindent 6 }}
+  template:
+    {{- include "task-manager.tasksPodTemplate" . | nindent 4 }}
+  strategy:
+    {{- toYaml $strategy | nindent 4 }}
+{{- end }}
